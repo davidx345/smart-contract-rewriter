@@ -21,6 +21,7 @@ py-solc-x==2.0.2
 
 # Monitoring and Metrics
 prometheus-client==0.19.0
+prometheus-fastapi-instrumentator==6.1.0
 
 # HTTP Client
 httpx==0.25.2
