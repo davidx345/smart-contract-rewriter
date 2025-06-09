@@ -1,13 +1,15 @@
-services:
-  # Backend API Service
+services:  # Backend API Service
   - type: web
     name: smart-contract-backend
-    env: docker
+    env: python
     plan: starter
     region: oregon
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
+    buildCommand: "pip install -r requirements.txt && alembic upgrade head"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     healthCheckPath: /health
+    repo: https://github.com/yourusername/smart_contract_rewriter
+    branch: main
+    rootDir: backend
     envVars:
       - key: DATABASE_URL
         # **No fromDatabase here** since you use external DB
@@ -37,8 +39,6 @@ services:
 
       - key: PYTHONUNBUFFERED
         value: "1"
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 
   # Frontend Static Site
   - type: web
@@ -64,11 +64,13 @@ services:
       - type: rewrite
         source: /*
         destination: /index.html
-
   # Redis Cache (Optional)
   - type: redis
     name: smart-contract-cache
     plan: starter
     region: oregon
     maxmemoryPolicy: allkeys-lru
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: "Allow all (modify for production)"
 
