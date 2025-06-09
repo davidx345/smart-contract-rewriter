@@ -72,5 +72,3 @@ services:
     region: oregon
     maxmemoryPolicy: allkeys-lru
 
-autoDeploy: true
-branch: main
