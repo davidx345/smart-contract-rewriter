@@ -8,6 +8,18 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "~/": path.resolve(__dirname, "./src/"),
     },
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress certain warnings
+        if (warning.code === 'UNRESOLVED_IMPORT') return
+        warn(warning)
+      }
+    }
+  }
 })

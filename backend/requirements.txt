@@ -38,4 +38,3 @@ passlib==1.7.4
 
 # Utilities
 PyYAML==6.0.2
-functools-lru-cache==1.0.3
