@@ -2,10 +2,10 @@
   "name": "smart-contract-rewriter-frontend",
   "private": true,
   "version": "1.0.0",
-  "type": "module",
-  "scripts": {
+  "type": "module",  "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:skip-types": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
