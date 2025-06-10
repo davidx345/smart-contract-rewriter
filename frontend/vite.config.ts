@@ -8,17 +8,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "~/": path.resolve(__dirname, "./src/"),
     },
+    extensions: ['.js', '.ts', '.jsx', '.tsx', '.json']
   },
   build: {
     outDir: 'dist',
     sourcemap: false,
+    target: 'esnext',
     rollupOptions: {
-      onwarn(warning, warn) {
-        // Suppress certain warnings
-        if (warning.code === 'UNRESOLVED_IMPORT') return
-        warn(warning)
+      output: {
+        manualChunks: undefined,
       }
     }
   }

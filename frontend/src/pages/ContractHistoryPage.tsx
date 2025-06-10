@@ -8,7 +8,7 @@ import Input from '../components/ui/Input';
 import Spinner from '../components/ui/Spinner';
 import type { ContractHistoryItem, ContractHistoryResponse } from '../types';
 import { apiService } from '../services/api';
-import { formatDate, formatGasAmount, calculateGasSavings, downloadFile } from '@/lib/utils';
+import { formatDate, formatGasAmount, calculateGasSavings, downloadFile } from '../lib/utils.js';
 
 const ContractHistoryPage: React.FC = () => {
   const [contracts, setContracts] = useState<ContractHistoryItem[]>([]);

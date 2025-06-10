@@ -82,7 +82,6 @@ class MetricsService:
     def set_active_connections(self, count: int):
         """Set the number of active connections"""
         self.active_connections.set(count)
-    
     def track_contract_analysis(self, status: str, language: str):
         """Track contract analysis operations"""
         if status == "started":
@@ -93,7 +92,8 @@ class MetricsService:
         elif status == "failed":
             # Could track failed analyses if needed
             pass
-      def track_error(self, error_type: str, location: str):
+    
+    def track_error(self, error_type: str, location: str):
         """Track errors by type and location"""
         # Use existing error counter or create one if needed
         pass  # For now, just pass since we have basic error tracking
