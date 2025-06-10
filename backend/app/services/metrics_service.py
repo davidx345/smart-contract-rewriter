@@ -36,15 +36,14 @@ class MetricsService:
             'smart_contract_gas_saved_total',
             'Total gas saved through optimization'
         )
-        
-        # Active connections gauge
+          # Active connections gauge
         self.active_connections = Gauge(
             'smart_contract_active_connections',
             'Number of active connections'
         )
         
         # Processing time histogram
-        self.processing_time = Histogram(
+        self.processing_time_histogram = Histogram(
             'smart_contract_processing_seconds',
             'Time spent processing contracts',
             ['operation_type']
@@ -74,10 +73,9 @@ class MetricsService:
         self.contracts_rewritten.inc()
         if gas_saved:
             self.gas_saved_total.inc(gas_saved)
-    
     def record_processing_time(self, operation_type: str, duration: float):
         """Record processing time for different operations"""
-        self.processing_time.labels(operation_type=operation_type).observe(duration)
+        self.processing_time_histogram.labels(operation_type=operation_type).observe(duration)
     
     def set_active_connections(self, count: int):
         """Set the number of active connections"""
