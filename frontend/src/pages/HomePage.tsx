@@ -15,12 +15,11 @@ const HomePage: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
   const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
-
   const handleAnalyze = async (formData: ContractForm) => {
     setIsAnalyzing(true);
     try {
       const contractInput = {
-        contract_code: formData.contract_code,
+        source_code: formData.contract_code,
         contract_name: formData.contract_name,
         optimization_level: formData.optimization_level,
         focus_areas: formData.focus_areas
@@ -37,12 +36,11 @@ const HomePage: React.FC = () => {
       setIsAnalyzing(false);
     }
   };
-
   const handleRewrite = async (formData: ContractForm) => {
     setIsRewriting(true);
     try {
       const optimizationRequest = {
-        contract_code: formData.contract_code,
+        source_code: formData.contract_code,
         contract_name: formData.contract_name,
         optimization_level: formData.optimization_level,
         focus_areas: formData.focus_areas,

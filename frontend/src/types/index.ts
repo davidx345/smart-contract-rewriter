@@ -89,14 +89,14 @@ export interface ContractHistoryResponse {
 
 // API Request Types
 export interface ContractInput {
-  contract_code: string
+  source_code: string
   contract_name?: string
   optimization_level: 'BASIC' | 'ADVANCED' | 'AGGRESSIVE'
   focus_areas: ('GAS_OPTIMIZATION' | 'SECURITY' | 'READABILITY' | 'BEST_PRACTICES')[]
 }
 
 export interface OptimizationRequest {
-  contract_code: string
+  source_code: string
   contract_name?: string
   optimization_level: 'BASIC' | 'ADVANCED' | 'AGGRESSIVE'
   focus_areas: ('GAS_OPTIMIZATION' | 'SECURITY' | 'READABILITY' | 'BEST_PRACTICES')[]
