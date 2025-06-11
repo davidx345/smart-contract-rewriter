@@ -5,7 +5,7 @@ import ContractFormComponent from '../components/contract/ContractForm';
 import AnalysisDisplay from '../components/contract/AnalysisDisplay';
 import RewriteDisplay from '../components/contract/RewriteDisplay';
 import Spinner from '../components/ui/Spinner';
-import type { ContractForm, AnalysisReport, RewriteReport, ContractOutput, APIError } from '../types';
+import type { ContractForm, AnalysisReport, RewriteReport, ContractOutput, APIError, ValidationError } from '../types';
 import { apiService } from '../services/api';
 
 const HomePage: React.FC = () => {
@@ -17,10 +17,16 @@ const HomePage: React.FC = () => {
   const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');  const handleAnalyze = async (formData: ContractForm) => {
     setIsAnalyzing(true);
     try {
+      // Extract contract name from code if not provided
+      const extractContractName = (code: string): string => {
+        const match = code.match(/contract\s+(\w+)/);
+        return match ? match[1] : "UntitledContract";
+      };
+
       const contractInput = {
         source_code: formData.contract_code,
-        contract_name: formData.contract_name,
-        compiler_version: formData.target_solidity_version
+        contract_name: formData.contract_name?.trim() || extractContractName(formData.contract_code),
+        compiler_version: formData.target_solidity_version || "0.8.19"
       };
 
       const report = await apiService.analyzeContract(contractInput);
@@ -29,13 +35,30 @@ const HomePage: React.FC = () => {
     } catch (error: unknown) {
       const apiError = error as APIError;
       console.error('Analysis failed:', error);
-      toast.error(apiError.detail || 'Failed to analyze contract');
+        // Better error handling - extract meaningful message
+      let errorMessage = 'Failed to analyze contract';
+      if (apiError.detail) {
+        if (Array.isArray(apiError.detail)) {
+          // Handle Pydantic validation errors
+          errorMessage = apiError.detail.map((err: ValidationError) => err.msg || String(err)).join(', ');
+        } else {
+          errorMessage = apiError.detail;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
   };  const handleRewrite = async (formData: ContractForm) => {
     setIsRewriting(true);
     try {
+      // Extract contract name from code if not provided
+      const extractContractName = (code: string): string => {
+        const match = code.match(/contract\s+(\w+)/);
+        return match ? match[1] : "UntitledContract";
+      };
+
       // Map frontend focus areas to backend optimization goals
       const optimizationGoalsMap = {
         'GAS_OPTIMIZATION': 'gas_efficiency',
@@ -50,13 +73,11 @@ const HomePage: React.FC = () => {
 
       const optimizationRequest = {
         source_code: formData.contract_code,
-        contract_name: formData.contract_name,
-        compiler_version: formData.target_solidity_version,
+        contract_name: formData.contract_name?.trim() || extractContractName(formData.contract_code),
+        compiler_version: formData.target_solidity_version || "0.8.19",
         optimization_goals,
         preserve_functionality: formData.preserve_functionality
-      };
-
-      const result: ContractOutput = await apiService.rewriteContract(optimizationRequest);
+      };      const result: ContractOutput = await apiService.rewriteContract(optimizationRequest);
       setRewriteReport(result.rewrite_report);
       setRewrittenCode(result.rewritten_code);
       setAnalysisReport(result.analysis_report);
@@ -64,7 +85,18 @@ const HomePage: React.FC = () => {
     } catch (error: unknown) {
       const apiError = error as APIError;
       console.error('Rewrite failed:', error);
-      toast.error(apiError.detail || 'Failed to rewrite contract');
+        // Better error handling - extract meaningful message
+      let errorMessage = 'Failed to rewrite contract';
+      if (apiError.detail) {
+        if (Array.isArray(apiError.detail)) {
+          // Handle Pydantic validation errors
+          errorMessage = apiError.detail.map((err: ValidationError) => err.msg || String(err)).join(', ');
+        } else {
+          errorMessage = apiError.detail;
+        }
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsRewriting(false);
     }

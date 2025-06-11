@@ -1,6 +1,6 @@
 services:  # Backend API Service
   - type: web
-    name: smart-contract-backend
+    name: smart-contract-rewriter-backend
     env: python
     plan: starter
     region: oregon
@@ -29,7 +29,7 @@ services:  # Backend API Service
         value: "INFO"
 
       - key: ALLOWED_ORIGINS
-        value: "https://smart-contract-frontend.onrender.com"
+        value: "https://smart-contract-rewriter.onrender.com"
 
       - key: APP_NAME
         value: "Smart Contract Rewriter"
@@ -40,16 +40,44 @@ services:  # Backend API Service
       - key: PYTHONUNBUFFERED
         value: "1"
 
+      # Additional required environment variables
+      - key: GEMINI_MODEL
+        value: "gemini-1.5-flash"
+
+      - key: WEB3_PROVIDER_URL
+        value: "https://mainnet.infura.io/v3/65f7a81362074c3cb170e6311d2438cf"
+
+      - key: ETHEREUM_NETWORK
+        value: "mainnet"
+
+      - key: ALGORITHM
+        value: "HS256"
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+
+      - key: MAX_FILE_SIZE
+        value: "10485760"
+
+      - key: ALLOWED_EXTENSIONS
+        value: ".sol,.txt"
+
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "30"
+
+      - key: RATE_LIMIT_BURST
+        value: "5"
+
   # Frontend Static Site
   - type: web
-    name: smart-contract-frontend
+    name: smart-contract-rewriter
     env: static
     buildCommand: "cd frontend && npm ci && npm run build"
     staticPublishPath: frontend/dist
     pullRequestPreviewsEnabled: true
     envVars:
       - key: VITE_API_BASE_URL
-        value: "https://smart-contract-backend.onrender.com"
+        value: "https://smart-contract-rewriter-backend.onrender.com"
     headers:
       - path: /*
         name: X-Frame-Options

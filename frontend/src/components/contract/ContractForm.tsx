@@ -39,9 +39,19 @@ const ContractFormComponent: React.FC<ContractFormProps> = ({
       target_solidity_version: '0.8.19'
     }
   });
-
   const contractCode = watch('contract_code');
   const focusAreas = watch('focus_areas');
+  
+  // Auto-extract contract name when code changes
+  React.useEffect(() => {
+    if (contractCode && !watch('contract_name')) {
+      const match = contractCode.match(/contract\s+(\w+)/);
+      if (match) {
+        setValue('contract_name', match[1]);
+      }
+    }
+  }, [contractCode, setValue, watch]);
+
   const handleFocusAreaChange = (area: string, checked: boolean) => {
     const currentAreas = focusAreas || [];
     if (checked) {
@@ -125,14 +135,12 @@ contract SimpleStorage {
             rows={12}
             error={errors.contract_code?.message}
           />
-        </div>
-
-        {/* Contract Name */}
+        </div>        {/* Contract Name */}
         <Input
           {...register('contract_name')}
-          label="Contract Name (Optional)"
-          placeholder="MyContract"
-          helperText="A descriptive name for your contract"
+          label="Contract Name"
+          placeholder="Auto-detected from code or enter manually"
+          helperText="Will auto-extract from contract code if not provided"
         />
 
         {/* Optimization Level */}

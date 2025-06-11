@@ -163,8 +163,16 @@ export interface ContractForm {
 }
 
 // API Error Types
+export interface ValidationError {
+  type?: string
+  loc?: string[]
+  msg?: string
+  input?: unknown
+  url?: string
+}
+
 export interface APIError {
-  detail: string
+  detail: string | ValidationError[]
   status_code: number
 }
 
