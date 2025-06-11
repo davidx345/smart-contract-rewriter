@@ -56,7 +56,7 @@ class MetricsService:
             endpoint=endpoint,
             status=str(status)
         ).inc()
-    
+
     def record_request_duration(self, method: str, endpoint: str, duration: float):
         """Record request duration"""
         self.request_duration.labels(
@@ -73,6 +73,7 @@ class MetricsService:
         self.contracts_rewritten.inc()
         if gas_saved:
             self.gas_saved_total.inc(gas_saved)
+    
     def record_processing_time(self, operation_type: str, duration: float):
         """Record processing time for different operations"""
         self.processing_time_histogram.labels(operation_type=operation_type).observe(duration)
@@ -90,7 +91,6 @@ class MetricsService:
         elif status == "failed":
             # Could track failed analyses if needed
             pass
-    
     def track_error(self, error_type: str, location: str):
         """Track errors by type and location"""
         # Use existing error counter or create one if needed

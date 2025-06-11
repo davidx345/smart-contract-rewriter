@@ -5,7 +5,7 @@ import { toast } from 'react-hot-toast';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import type { RewriteReport, GasFunctionAnalysis } from '../../types';
-import { copyToClipboard, downloadFile, formatGasAmount, calculateGasSavings } from '../../lib/utils.js';
+import { copyToClipboard, downloadFile, formatGasAmount, calculateGasSavings } from '@/lib/utils';
 
 interface RewriteDisplayProps {
   report: RewriteReport;
