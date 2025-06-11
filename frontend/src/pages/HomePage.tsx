@@ -14,15 +14,13 @@ const HomePage: React.FC = () => {
   const [rewrittenCode, setRewrittenCode] = useState<string>('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isRewriting, setIsRewriting] = useState(false);
-  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
-  const handleAnalyze = async (formData: ContractForm) => {
+  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');  const handleAnalyze = async (formData: ContractForm) => {
     setIsAnalyzing(true);
     try {
       const contractInput = {
         source_code: formData.contract_code,
         contract_name: formData.contract_name,
-        optimization_level: formData.optimization_level,
-        focus_areas: formData.focus_areas
+        compiler_version: formData.target_solidity_version
       };
 
       const report = await apiService.analyzeContract(contractInput);
@@ -35,17 +33,27 @@ const HomePage: React.FC = () => {
     } finally {
       setIsAnalyzing(false);
     }
-  };
-  const handleRewrite = async (formData: ContractForm) => {
+  };  const handleRewrite = async (formData: ContractForm) => {
     setIsRewriting(true);
     try {
+      // Map frontend focus areas to backend optimization goals
+      const optimizationGoalsMap = {
+        'GAS_OPTIMIZATION': 'gas_efficiency',
+        'SECURITY': 'security_hardening', 
+        'READABILITY': 'readability',
+        'BEST_PRACTICES': 'modularity'
+      } as const;
+
+      const optimization_goals = formData.focus_areas.map(area => 
+        optimizationGoalsMap[area as keyof typeof optimizationGoalsMap] || 'gas_efficiency'
+      );
+
       const optimizationRequest = {
         source_code: formData.contract_code,
         contract_name: formData.contract_name,
-        optimization_level: formData.optimization_level,
-        focus_areas: formData.focus_areas,
-        preserve_functionality: formData.preserve_functionality,
-        target_solidity_version: formData.target_solidity_version
+        compiler_version: formData.target_solidity_version,
+        optimization_goals,
+        preserve_functionality: formData.preserve_functionality
       };
 
       const result: ContractOutput = await apiService.rewriteContract(optimizationRequest);

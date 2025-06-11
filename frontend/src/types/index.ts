@@ -91,15 +91,14 @@ export interface ContractHistoryResponse {
 export interface ContractInput {
   source_code: string
   contract_name?: string
-  optimization_level: 'BASIC' | 'ADVANCED' | 'AGGRESSIVE'
-  focus_areas: ('GAS_OPTIMIZATION' | 'SECURITY' | 'READABILITY' | 'BEST_PRACTICES')[]
+  compiler_version?: string
 }
 
 export interface OptimizationRequest {
   source_code: string
   contract_name?: string
-  optimization_level: 'BASIC' | 'ADVANCED' | 'AGGRESSIVE'
-  focus_areas: ('GAS_OPTIMIZATION' | 'SECURITY' | 'READABILITY' | 'BEST_PRACTICES')[]
+  compiler_version?: string
+  optimization_goals: ('gas_efficiency' | 'security_hardening' | 'readability' | 'modularity' | 'upgradability' | 'storage_optimization' | 'transaction_speed')[]
   preserve_functionality: boolean
   target_solidity_version?: string
 }
