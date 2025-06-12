@@ -35,7 +35,7 @@ const HomePage: React.FC = () => {
     } catch (error: unknown) {
       const apiError = error as APIError;
       console.error('Analysis failed:', error);
-        // Better error handling - extract meaningful message
+      setAnalysisReport(null); // Explicitly reset state on error
       let errorMessage = 'Failed to analyze contract';
       if (apiError.detail) {
         if (Array.isArray(apiError.detail)) {
@@ -85,7 +85,11 @@ const HomePage: React.FC = () => {
     } catch (error: unknown) {
       const apiError = error as APIError;
       console.error('Rewrite failed:', error);
-        // Better error handling - extract meaningful message
+      // Explicitly reset relevant states on error
+      setRewriteReport(null);
+      setRewrittenCode('');
+      // Consider if analysisReport should also be reset if rewrite depends on a consistent state
+      // setAnalysisReport(null); 
       let errorMessage = 'Failed to rewrite contract';
       if (apiError.detail) {
         if (Array.isArray(apiError.detail)) {
