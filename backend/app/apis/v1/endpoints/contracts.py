@@ -207,3 +207,9 @@ def log_rewrite_to_db(
     except Exception as e:
         db.rollback()
         print(f"DB Error logging rewrite for {optimization_request.contract_name}: {e}")
+
+@router.post("/analyze/raw")
+async def analyze_contract_raw(request: Request):
+    body = await request.body()
+    print("/analyze/raw RAW BODY:", body)
+    return {"received": body.decode()}
