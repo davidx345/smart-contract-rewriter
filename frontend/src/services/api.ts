@@ -5,15 +5,17 @@ import type {
   OptimizationRequest,
   ContractOutput,
   ContractHistoryResponse,
-  APIError
+  APIError,
 } from '../types'
 
 class APIService {
   private api: AxiosInstance
 
   constructor() {
+    // Ensure VITE_API_BASE_URL is correctly used, and the fallback is to the /api/v1 path
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://smart-contract-rewriter-backend.onrender.com/api/v1';
     this.api = axios.create({
-      baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+      baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`, // Ensure /api/v1 is present
       headers: {
         'Content-Type': 'application/json',
       },
@@ -36,9 +38,21 @@ class APIService {
     this.api.interceptors.response.use(
       (response) => response,
       (error: AxiosError) => {
-        const errorData = error.response?.data as { detail?: string } | undefined
+        // Ensure errorData can be an array for validation errors or an object for other errors
+        const errorData = error.response?.data as { detail?: string | Array<{ msg: string, loc: string[], type: string }> } | undefined;
+        let errorMessage: string = 'An error occurred';
+
+        if (typeof errorData?.detail === 'string') {
+          errorMessage = errorData.detail;
+        } else if (Array.isArray(errorData?.detail)) {
+          // Handle Pydantic validation errors
+          errorMessage = errorData.detail.map((err: { msg: string }) => err.msg).join(', ');
+        } else if (error.message) {
+          errorMessage = error.message;
+        }
+        
         const apiError: APIError = {
-          detail: errorData?.detail || error.message || 'An error occurred',
+          detail: errorMessage,
           status_code: error.response?.status || 500
         }
         return Promise.reject(apiError)
@@ -48,38 +62,42 @@ class APIService {
 
   // Health check
   async healthCheck(): Promise<{ status: string }> {
-    const response = await this.api.get('/health')
-    return response.data
+    // Adjust health check endpoint if it's not under /api/v1
+    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://smart-contract-rewriter-backend.onrender.com';
+    const healthApi = axios.create({ baseURL: healthBaseURL });
+    const response = await healthApi.get('/health');
+    return response.data;
   }
   // Analyze contract
   async analyzeContract(contractInput: ContractInput): Promise<ContractOutput> {
-    const response = await this.api.post('/api/v1/contracts/analyze', contractInput)
+    const response = await this.api.post('/contracts/analyze', contractInput) // Removed /api/v1 as it's in baseURL
     return response.data
   }
 
   // Rewrite contract
   async rewriteContract(optimizationRequest: OptimizationRequest): Promise<ContractOutput> {
-    const response = await this.api.post('/api/v1/contracts/rewrite', optimizationRequest)
+    const response = await this.api.post('/contracts/rewrite', optimizationRequest) // Removed /api/v1
     return response.data
   }
 
   // Get contract history
-  async getContractHistory(page: number = 1, size: number = 10): Promise<ContractHistoryResponse> {
-    const response = await this.api.get('/api/v1/contracts/history', {
-      params: { page, size }
+  async getContractHistory(page: number = 1, limit: number = 10): Promise<ContractHistoryResponse> {
+    const skip = (page - 1) * limit;
+    const response = await this.api.get('/contracts/history', { // Removed /api/v1
+      params: { skip, limit } // Use skip and limit
     })
     return response.data
   }
 
   // Get specific contract by ID
   async getContractById(contractId: string): Promise<ContractOutput> {
-    const response = await this.api.get(`/api/v1/contracts/${contractId}`)
+    const response = await this.api.get(`/contracts/${contractId}`) // Removed /api/v1
     return response.data
   }
 
   // Delete contract from history
   async deleteContract(contractId: string): Promise<void> {
-    await this.api.delete(`/api/v1/contracts/${contractId}`)
+    await this.api.delete(`/contracts/${contractId}`) // Removed /api/v1
   }
 }
 

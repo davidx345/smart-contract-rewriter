@@ -6,9 +6,9 @@ import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Spinner from '../components/ui/Spinner';
-import type { ContractHistoryItem, ContractHistoryResponse } from '../types';
+import type { ContractHistoryItem, ContractHistoryResponse, APIError, ValidationError } from '../types'; // Removed AnalysisReport, RewriteReport
 import { apiService } from '../services/api';
-import { formatDate, formatGasAmount, calculateGasSavings, downloadFile } from '@/lib/utils';
+import { formatDate, formatGasAmount, downloadFile } from '@/lib/utils';
 
 const ContractHistoryPage: React.FC = () => {
   const [contracts, setContracts] = useState<ContractHistoryItem[]>([]);
@@ -20,21 +20,23 @@ const ContractHistoryPage: React.FC = () => {
   const [selectedContract, setSelectedContract] = useState<ContractHistoryItem | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const pageSize = 10;
+  const pageSize = 10; // This is now 'limit' for the API call
   const loadContracts = useCallback(async () => {
     try {
       setIsLoading(true);
       const response: ContractHistoryResponse = await apiService.getContractHistory(currentPage, pageSize);
       setContracts(response.contracts);
       setTotalPages(Math.ceil(response.total / pageSize));
-      setError(null);    } catch (error: unknown) {
-      const apiError = error as { detail?: string };
-      setError(apiError.detail || 'Failed to load contract history');
-      toast.error('Failed to load contract history');
+      setError(null);
+    } catch (error: unknown) {
+      const apiError = error as APIError;
+      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
+      setError(errorMessage || 'Failed to load contract history');
+      toast.error(errorMessage || 'Failed to load contract history');
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize]); // pageSize is a dependency now
 
   useEffect(() => {
     loadContracts();
@@ -43,12 +45,15 @@ const ContractHistoryPage: React.FC = () => {
   const handleDeleteContract = async (contractId: string) => {
     if (!confirm('Are you sure you want to delete this contract?')) {
       return;
-    }    try {
+    }
+    try {
       await apiService.deleteContract(contractId);
-      setContracts(contracts.filter(c => c.id !== contractId));
-      toast.success('Contract deleted successfully');    } catch (error: unknown) {
-      const apiError = error as { detail?: string };
-      toast.error(apiError.detail || 'Failed to delete contract');
+      setContracts(prevContracts => prevContracts.filter(c => c.id !== contractId));
+      toast.success('Contract deleted successfully');
+    } catch (error: unknown) {
+      const apiError = error as APIError;
+      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
+      toast.error(errorMessage || 'Failed to delete contract');
     }
   };
 
@@ -58,26 +63,33 @@ const ContractHistoryPage: React.FC = () => {
   };
 
   const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
+    // Safely access potentially undefined properties
     const code = type === 'original' ? contract.original_contract : contract.rewritten_contract;
-    const filename = `${contract.request_id}_${type}_contract.sol`;
+    if (!code) {
+      toast.error(`No ${type} code available for this contract.`);
+      return;
+    }
+    const filename = `${contract.contract_name || contract.id}_${type}_contract.sol`; // Use contract.contract_name or contract.id for filename
     downloadFile(code, filename);
     toast.success(`${type === 'original' ? 'Original' : 'Rewritten'} contract downloaded`);
   };
 
   const filteredContracts = contracts.filter(contract =>
-    contract.request_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    contract.original_contract.toLowerCase().includes(searchTerm.toLowerCase())
+    contract.id.toLowerCase().includes(searchTerm.toLowerCase()) || // Search by ID
+    (contract.contract_name && contract.contract_name.toLowerCase().includes(searchTerm.toLowerCase())) || // Search by contract name
+    (contract.original_contract && contract.original_contract.toLowerCase().includes(searchTerm.toLowerCase())) // Corrected: use original_contract
   );
 
   const getOptimizationSummary = (contract: ContractHistoryItem) => {
-    const gasSavings = calculateGasSavings(
-      contract.rewrite_report.original_gas_estimate,
-      contract.rewrite_report.optimized_gas_estimate
-    );
+    // Safe navigation for potentially undefined reports or nested properties
+    const gasSavingsPercentage = contract.rewrite_report?.gas_optimization_details?.gas_savings_percentage;
+    const securityIssuesCount = contract.analysis_report?.vulnerabilities?.length ?? 0;
+    const optimizationsAppliedCount = contract.rewrite_report?.suggestions?.length ?? 0; // Or another relevant field
+
     return {
-      gasSavings: gasSavings.percentage,
-      securityIssues: contract.analysis_report.security_issues.length,
-      optimizations: contract.rewrite_report.optimization_techniques_applied.length
+      gasSavings: typeof gasSavingsPercentage === 'number' ? gasSavingsPercentage : 0,
+      securityIssues: securityIssuesCount,
+      optimizations: optimizationsAppliedCount
     };
   };
 
@@ -93,10 +105,11 @@ const ContractHistoryPage: React.FC = () => {
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              Contract #{contract.request_id.slice(-8)}
+              {/* Display contract name if available, otherwise fallback to ID */}
+              {contract.contract_name || `Contract #${contract.id.slice(-8)}`}
             </h3>
             <p className="text-sm text-gray-600">
-              {formatDate(contract.created_at)}
+              {formatDate(contract.created_at)} {/* Corrected: use contract.created_at */}
             </p>
           </div>
           <div className="flex space-x-2">
@@ -165,8 +178,6 @@ const ContractHistoryPage: React.FC = () => {
   const ContractDetailsModal: React.FC = () => {
     if (!selectedContract) return null;
 
-    const summary = getOptimizationSummary(selectedContract);
-
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -184,101 +195,182 @@ const ContractHistoryPage: React.FC = () => {
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">
-                Contract Details #{selectedContract.request_id.slice(-8)}
+              <h2 className="text-2xl font-bold text-gray-800">
+                {selectedContract.contract_name || `Contract Details (${selectedContract.id.slice(-8)})`}
               </h2>
-              <button
-                onClick={() => setShowDetails(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
+              {/* Changed size="icon" to size="sm" */}
+              <Button variant="ghost" size="sm" onClick={() => setShowDetails(false)}>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <Card>
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-1">Gas Savings</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {summary.gasSavings.toFixed(1)}%
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {formatGasAmount(selectedContract.rewrite_report.original_gas_estimate)} → {formatGasAmount(selectedContract.rewrite_report.optimized_gas_estimate)}
-                  </p>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <Card className="p-4">
+                <h3 className="font-semibold text-gray-700 mb-2">Summary</h3>
+                <p className="text-sm text-gray-600">Processed: {formatDate(selectedContract.created_at)}</p>
+                <p className="text-sm text-gray-600">Request ID: {selectedContract.request_id}</p>
+                {selectedContract.analysis_report?.overall_code_quality_score !== undefined && selectedContract.analysis_report?.overall_code_quality_score !== null && (
+                  <p className="text-sm text-gray-600">Code Quality Score: {(selectedContract.analysis_report.overall_code_quality_score).toFixed(1)}%</p>
+                )}
+                {selectedContract.analysis_report?.overall_security_score !== undefined && selectedContract.analysis_report?.overall_security_score !== null && (
+                  <p className="text-sm text-gray-600">Security Score: {(selectedContract.analysis_report.overall_security_score).toFixed(1)}%</p>
+                )}
               </Card>
-
-              <Card>
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-1">Security Score</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {selectedContract.analysis_report.gas_efficiency_score}%
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {summary.securityIssues} issues found
-                  </p>
-                </div>
-              </Card>
-
-              <Card>
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 mb-1">Quality Score</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {selectedContract.analysis_report.code_quality_metrics.complexity_score}%
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Code complexity
-                  </p>
-                </div>
+              <Card className="p-4">
+                <h3 className="font-semibold text-gray-700 mb-2">Gas Optimization</h3>
+                {selectedContract.rewrite_report?.gas_optimization_details ? (
+                  <>
+                    <p className="text-sm text-gray-600">
+                      Original Gas: {formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.original_estimated_gas ?? 0)}
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      Optimized Gas: {formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.optimized_estimated_gas ?? 0)}
+                    </p>
+                    <p className="text-sm text-green-600 font-semibold">
+                      Savings: {(selectedContract.rewrite_report.gas_optimization_details.gas_savings_percentage ?? 0).toFixed(1)}%
+                      ({formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.gas_saved ?? 0)})
+                    </p>
+                  </>
+                ) : <p className="text-sm text-gray-500">No gas optimization details available.</p>}
               </Card>
             </div>
 
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Optimization Techniques Applied</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedContract.rewrite_report.optimization_techniques_applied.map((technique, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700"
-                    >
-                      {technique}
-                    </span>
-                  ))}
+            {/* Analysis Report Details */}
+            {selectedContract.analysis_report && (
+              <Card className="p-4 mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3">Analysis Report</h3>
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-md font-medium text-gray-600 mb-1">Vulnerabilities ({selectedContract.analysis_report.vulnerabilities?.length || 0})</h4>
+                    {selectedContract.analysis_report.vulnerabilities?.length > 0 ? (
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.analysis_report.vulnerabilities.map((vuln, index: number) => (
+                          <li key={index} className="mb-1">
+                            <span className={`font-semibold ${vuln.severity === 'HIGH' || vuln.severity === 'CRITICAL' ? 'text-red-600' : vuln.severity === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'}`}>
+                              {vuln.type} ({vuln.severity})
+                            </span>
+                            {vuln.line_number && ` - Line ${vuln.line_number}`}: {vuln.description}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-sm text-gray-500">No vulnerabilities detected.</p>}
+                  </div>
+                  <div>
+                    <h4 className="text-md font-medium text-gray-600 mb-1">Gas Analysis per Function</h4>
+                    {selectedContract.analysis_report.gas_analysis_per_function?.length > 0 ? (
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.analysis_report.gas_analysis_per_function.map((gas, index: number) => (
+                          <li key={index}>
+                            {gas.function_name}: Original: {formatGasAmount(gas.original_gas ?? 0)}, Optimized: {formatGasAmount(gas.optimized_gas ?? 0)} (Savings: {(gas.savings_percentage ?? 0).toFixed(1)}%)
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-sm text-gray-500">No per-function gas analysis available.</p>}
+                  </div>
+                  {selectedContract.analysis_report.general_suggestions?.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-600 mb-1">General Suggestions</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.analysis_report.general_suggestions.map((suggestion: string, index: number) => (
+                          <li key={index}>{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Rewrite Report Details */}
+            {selectedContract.rewrite_report && (
+              <Card className="p-4 mb-6">
+                <h3 className="font-semibold text-gray-700 mb-3">Rewrite Report</h3>
+                <div className="space-y-3">
+                  {selectedContract.rewrite_report.suggestions && selectedContract.rewrite_report.suggestions.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-600 mb-1">Suggestions Applied ({selectedContract.rewrite_report.suggestions.length})</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.rewrite_report.suggestions.map((suggestion: string, index: number) => (
+                          <li key={index}>{suggestion}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selectedContract.rewrite_report.security_improvements && selectedContract.rewrite_report.security_improvements.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-600 mb-1">Security Improvements ({selectedContract.rewrite_report.security_improvements.length})</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.rewrite_report.security_improvements.map((improvement: string, index: number) => (
+                          <li key={index}>{improvement}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                   {selectedContract.rewrite_report.changes_summary && selectedContract.rewrite_report.changes_summary.length > 0 && (
+                    <div>
+                      <h4 className="text-md font-medium text-gray-600 mb-1">Changes Summary</h4>
+                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
+                        {selectedContract.rewrite_report.changes_summary.map((change: string, index: number) => (
+                          <li key={index}>{change}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {selectedContract.rewrite_report.readability_notes && (
+                     <div>
+                      <h4 className="text-md font-medium text-gray-600 mb-1">Readability Notes</h4>
+                      <p className="text-sm text-gray-600">{selectedContract.rewrite_report.readability_notes}</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+            {/* Code Diff View (Placeholder or simplified) */}
+            <Card className="p-4">
+              <h3 className="font-semibold text-gray-700 mb-2">Code Versions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-md font-medium text-gray-600 mb-1">Original Code</h4>
+                  <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-auto max-h-60">
+                    <code>{selectedContract.original_contract}</code>
+                  </pre>
+                  {/* Changed variant="link" to variant="ghost" */}
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDownloadContract(selectedContract, 'original')}
+                    className="mt-2"
+                  >
+                    Download Original
+                  </Button>
+                </div>
+                <div>
+                  <h4 className="text-md font-medium text-gray-600 mb-1">Rewritten Code</h4>
+                  {selectedContract.rewritten_contract ? (
+                    <>
+                      <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-auto max-h-60">
+                        <code>{selectedContract.rewritten_contract}</code>
+                      </pre>
+                      {/* Changed variant="link" to variant="ghost" */}
+                      <Button 
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadContract(selectedContract, 'rewritten')}
+                        className="mt-2"
+                      >
+                        Download Rewritten
+                      </Button>
+                    </>
+                  ) : <p className="text-sm text-gray-500">No rewritten code available.</p>}
                 </div>
               </div>
+            </Card>
 
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Security Improvements</h3>
-                <div className="flex flex-wrap gap-2">
-                  {selectedContract.rewrite_report.security_improvements.map((improvement, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex px-3 py-1 rounded-full text-sm bg-green-100 text-green-700"
-                    >
-                      {improvement}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex space-x-4">
-                <Button
-                  onClick={() => handleDownloadContract(selectedContract, 'original')}
-                  variant="outline"
-                  className="flex-1"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Original
-                </Button>
-                <Button
-                  onClick={() => handleDownloadContract(selectedContract, 'rewritten')}
-                  className="flex-1"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download Optimized
-                </Button>
-              </div>
+            <div className="mt-6 flex justify-end">
+              <Button onClick={() => setShowDetails(false)}>Close</Button>
             </div>
           </div>
         </motion.div>

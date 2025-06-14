@@ -100,6 +100,7 @@ export interface CompilationStatus {
 
 export interface ContractHistoryItem {
   id: string
+  contract_name?: string // Added for consistency with usage
   original_contract: string
   rewritten_contract: string
   analysis_report: AnalysisReport

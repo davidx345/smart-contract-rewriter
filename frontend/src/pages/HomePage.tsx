@@ -10,12 +10,12 @@ import type { ContractForm, ContractOutput, APIError, ValidationError } from '..
 
 const HomePage: React.FC = () => {
   const [contractOutput, setContractOutput] = useState<ContractOutput | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingAction, setLoadingAction] = useState<'analyze' | 'rewrite' | null>(null); // New state
   const [error, setError] = useState<string | null>(null); // UI error state
   const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
 
   const handleAnalyze = async (formData: ContractForm) => {
-    setIsLoading(true);
+    setLoadingAction('analyze'); // Set specific loading action
     setError(null); // Clear UI error
     setContractOutput(null); // Clear previous output
     try {
@@ -55,7 +55,7 @@ const HomePage: React.FC = () => {
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
-      setIsLoading(false);
+      setLoadingAction(null); // Clear loading action
     }
   };
 
@@ -64,7 +64,7 @@ const HomePage: React.FC = () => {
       setError("Please enter some contract code.");
       return;
     }
-    setIsLoading(true);
+    setLoadingAction('rewrite'); // Set specific loading action
     setError(null); // Clear UI error
     // Preserve analysis report if it exists, clear rewrite specific parts
     setContractOutput(prev => prev ? { ...prev, rewrite_report: undefined, rewritten_code: undefined, message: 'Processing rewrite...' } : null);
@@ -125,7 +125,7 @@ const HomePage: React.FC = () => {
         { request_id: "", original_code: formData.contract_code, processing_time_seconds:0, message: errorMessage });
       toast.error(errorMessage);
     } finally {
-      setIsLoading(false);
+      setLoadingAction(null); // Clear loading action
     }
   };
 
@@ -211,8 +211,9 @@ const HomePage: React.FC = () => {
               <ContractFormComponent 
                 onAnalyze={handleAnalyze}
                 onRewrite={handleRewrite}
-                isAnalyzing={isLoading}
-                isRewriting={isLoading}
+                // Pass specific loading states
+                isAnalyzing={loadingAction === 'analyze'}
+                isRewriting={loadingAction === 'rewrite'}
               />
             </div>
           )}
@@ -242,18 +243,18 @@ const HomePage: React.FC = () => {
                 </p>
               </div>
               <RewriteDisplay
-                report={contractOutput.rewrite_report} // Use snake_case
-                originalCode={contractOutput.original_code} // Use snake_case
-                rewrittenCode={contractOutput.rewritten_code} // Use snake_case
-                isLoading={isLoading}
-                error={error} // Pass the UI error state here
+                report={contractOutput.rewrite_report}
+                originalCode={contractOutput.original_code}
+                rewrittenCode={contractOutput.rewritten_code}
+                isLoading={loadingAction === 'rewrite'} // Pass specific loading state
+                error={error}
               />
             </div>
           )}
         </motion.div>
 
-        {/* Loading States */}
-        {isLoading && (
+        {/* Loading States - Now uses loadingAction */}
+        {loadingAction && ( // Show spinner if any action is loading
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -263,10 +264,11 @@ const HomePage: React.FC = () => {
               <div className="text-center">
                 <Spinner size="lg" className="mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {activeView === 'analysis' ? 'Analyzing Contract...' : 'Rewriting Contract...'}
+                  {/* Update text based on loadingAction */}
+                  {loadingAction === 'analyze' ? 'Analyzing Contract...' : 'Rewriting Contract...'}
                 </h3>
                 <p className="text-gray-600">
-                  {activeView === 'analysis' 
+                  {loadingAction === 'analyze' 
                     ? 'AI is analyzing your contract for security issues and optimization opportunities.'
                     : 'AI is rewriting your contract with optimizations and improvements.'
                   }
