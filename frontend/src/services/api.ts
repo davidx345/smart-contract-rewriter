@@ -3,7 +3,6 @@ import type { AxiosInstance } from 'axios'
 import type {
   ContractInput,
   OptimizationRequest,
-  AnalysisReport,
   ContractOutput,
   ContractHistoryResponse,
   APIError
@@ -52,9 +51,8 @@ class APIService {
     const response = await this.api.get('/health')
     return response.data
   }
-
   // Analyze contract
-  async analyzeContract(contractInput: ContractInput): Promise<AnalysisReport> {
+  async analyzeContract(contractInput: ContractInput): Promise<ContractOutput> {
     const response = await this.api.post('/api/v1/contracts/analyze', contractInput)
     return response.data
   }

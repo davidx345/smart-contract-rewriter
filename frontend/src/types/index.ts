@@ -1,12 +1,67 @@
-// API Response Types
-export interface AnalysisReport {
-  gas_efficiency_score: number
-  security_issues: SecurityIssue[]
-  optimization_suggestions: OptimizationSuggestion[]
-  code_quality_metrics: CodeQualityMetrics
-  vulnerability_assessment: VulnerabilityAssessment
+// API Response Types - Updated to match backend
+export interface VulnerabilityInfo {
+  type: string
+  severity: string
+  line_number?: number
+  description: string
+  recommendation: string
 }
 
+export interface GasFunctionAnalysis {
+  function_name: string
+  original_gas?: number
+  optimized_gas?: number
+  savings_absolute?: number
+  savings_percentage?: number
+}
+
+export interface AnalysisReport {
+  vulnerabilities: VulnerabilityInfo[]
+  gas_analysis_per_function: GasFunctionAnalysis[]
+  overall_code_quality_score?: number
+  overall_security_score?: number
+  general_suggestions: string[]
+  estimated_total_gas_original?: number
+  estimated_total_gas_optimized?: number
+  total_gas_savings_absolute?: number
+  total_gas_savings_percentage?: number
+}
+
+export interface GasOptimizationDetails {
+  original_estimated_gas?: number | null
+  optimized_estimated_gas?: number | null
+  gas_saved?: number | null
+  gas_savings_percentage?: number | null
+}
+
+export interface RewriteReport {
+  // Fields used by RewriteDisplay.tsx and potentially by backend
+  suggestions?: string[]
+  gas_optimization_details?: GasOptimizationDetails | null
+  security_improvements?: string[]
+
+  // Original fields from backend schema - kept as optional 
+  // if they might still be used or for other parts of app
+  changes_summary?: string[]
+  security_enhancements_made?: string[] // Consider if this is same as security_improvements
+  readability_notes?: string
+}
+
+export interface ContractOutput {
+  request_id: string
+  original_code: string
+  rewritten_code?: string
+  analysis_report?: AnalysisReport
+  rewrite_report?: RewriteReport
+  compilation_success_original?: boolean
+  compilation_success_rewritten?: boolean
+  diff_summary?: string
+  confidence_score?: number
+  processing_time_seconds: number
+  message: string
+}
+
+// Legacy types for backward compatibility (if needed)
 export interface SecurityIssue {
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
   category: string
@@ -36,38 +91,11 @@ export interface VulnerabilityAssessment {
   recommendations: string[]
 }
 
-export interface RewriteReport {
-  original_gas_estimate: number
-  optimized_gas_estimate: number
-  gas_savings_percentage: number
-  security_improvements: string[]
-  optimization_techniques_applied: string[]
-  code_quality_improvements: string[]
-  compilation_status: CompilationStatus
-  function_gas_analysis: GasFunctionAnalysis[]
-}
-
 export interface CompilationStatus {
   success: boolean
   compiler_version: string
   warnings: string[]
   errors: string[]
-}
-
-export interface GasFunctionAnalysis {
-  function_name: string
-  original_gas: number
-  optimized_gas: number
-  savings: number
-  optimization_techniques: string[]
-}
-
-export interface ContractOutput {
-  rewritten_code: string
-  analysis_report: AnalysisReport
-  rewrite_report: RewriteReport
-  request_id: string
-  processing_time: number
 }
 
 export interface ContractHistoryItem {

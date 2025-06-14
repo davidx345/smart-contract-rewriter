@@ -2,112 +2,104 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, Shield, Zap, TrendingUp, CheckCircle, XCircle } from 'lucide-react';
 import Card from '../ui/Card';
-import type { AnalysisReport, SecurityIssue, OptimizationSuggestion } from '../../types';
+import type { AnalysisReport, VulnerabilityInfo, GasFunctionAnalysis } from '../../types'; // MODIFIED: Added GasFunctionAnalysis
 
 interface AnalysisDisplayProps {
   report: AnalysisReport;
   className?: string;
 }
 
-const SecurityIssueItem: React.FC<{ issue: SecurityIssue }> = ({ issue }) => {
+const VulnerabilityItem: React.FC<{ vulnerability: VulnerabilityInfo }> = ({ vulnerability }) => {
   const severityColors = {
-    LOW: 'text-yellow-600 bg-yellow-50 border-yellow-200',
-    MEDIUM: 'text-orange-600 bg-orange-50 border-orange-200',
-    HIGH: 'text-red-600 bg-red-50 border-red-200',
-    CRITICAL: 'text-red-800 bg-red-100 border-red-300'
+    Low: 'text-yellow-600 bg-yellow-50 border-yellow-200',
+    Medium: 'text-orange-600 bg-orange-50 border-orange-200',
+    High: 'text-red-600 bg-red-50 border-red-200',
+    Critical: 'text-red-800 bg-red-100 border-red-300'
   };
 
   const severityIcons = {
-    LOW: AlertTriangle,
-    MEDIUM: AlertTriangle,
-    HIGH: XCircle,
-    CRITICAL: XCircle
+    Low: AlertTriangle,
+    Medium: AlertTriangle,
+    High: XCircle,
+    Critical: XCircle
   };
 
-  const Icon = severityIcons[issue.severity];
+  const severity = vulnerability.severity as keyof typeof severityColors;
+  const colorClass = severityColors[severity] || severityColors.Medium;
+  const Icon = severityIcons[severity] || AlertTriangle;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 rounded-lg border ${severityColors[issue.severity]}`}
+      className={`p-4 rounded-lg border ${colorClass}`}
     >
       <div className="flex items-start space-x-3">
         <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <h4 className="font-medium">{issue.category}</h4>
+            <h4 className="font-medium">{vulnerability.type}</h4>
             <span className="text-xs font-semibold px-2 py-1 rounded-full bg-white/50">
-              {issue.severity}
+              {vulnerability.severity}
             </span>
           </div>
-          <p className="text-sm mb-2">{issue.description}</p>
-          {issue.line_number && (
-            <p className="text-xs opacity-75 mb-2">Line: {issue.line_number}</p>
+          <p className="text-sm mb-2">{vulnerability.description}</p>
+          {vulnerability.line_number && (
+            <p className="text-xs opacity-75 mb-2">Line: {vulnerability.line_number}</p>
           )}
           <p className="text-sm font-medium">Recommendation:</p>
-          <p className="text-xs">{issue.recommendation}</p>
+          <p className="text-xs">{vulnerability.recommendation}</p>
         </div>
       </div>
     </motion.div>
   );
 };
 
-const OptimizationItem: React.FC<{ suggestion: OptimizationSuggestion }> = ({ suggestion }) => {
-  const typeColors = {
-    GAS_OPTIMIZATION: 'text-green-600 bg-green-50 border-green-200',
-    SECURITY_IMPROVEMENT: 'text-blue-600 bg-blue-50 border-blue-200',
-    CODE_QUALITY: 'text-purple-600 bg-purple-50 border-purple-200',
-    PERFORMANCE: 'text-indigo-600 bg-indigo-50 border-indigo-200'
-  };
-
-  const impactColors = {
-    LOW: 'bg-gray-100 text-gray-600',
-    MEDIUM: 'bg-yellow-100 text-yellow-700',
-    HIGH: 'bg-green-100 text-green-700'
-  };
-
+const GasFunctionItem: React.FC<{ gasAnalysis: GasFunctionAnalysis }> = ({ gasAnalysis }) => { // MODIFIED: Used GasFunctionAnalysis type
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-4 rounded-lg border ${typeColors[suggestion.type]}`}
+      className="p-4 rounded-lg border border-green-200 bg-green-50"
     >
       <div className="flex items-start justify-between mb-2">
-        <h4 className="font-medium">{suggestion.type.replace('_', ' ')}</h4>
-        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${impactColors[suggestion.impact]}`}>
-          {suggestion.impact} Impact
-        </span>
+        <h4 className="font-medium">{gasAnalysis.function_name}</h4>
+        {gasAnalysis.savings_percentage && (
+          <span className="text-xs font-semibold px-2 py-1 rounded-full bg-green-100 text-green-700">
+            {gasAnalysis.savings_percentage.toFixed(1)}% savings
+          </span>
+        )}
       </div>
-      <p className="text-sm mb-2">{suggestion.description}</p>
-      {suggestion.estimated_gas_savings && (
-        <p className="text-xs font-medium text-green-600">
-          Estimated Gas Savings: {suggestion.estimated_gas_savings.toLocaleString()}
+      <div className="grid grid-cols-2 gap-4 text-sm">
+        {gasAnalysis.original_gas && (
+          <p>Original Gas: <span className="font-medium">{gasAnalysis.original_gas.toLocaleString()}</span></p>
+        )}
+        {gasAnalysis.optimized_gas && (
+          <p>Optimized Gas: <span className="font-medium">{gasAnalysis.optimized_gas.toLocaleString()}</span></p>
+        )}
+      </div>
+      {gasAnalysis.savings_absolute && (
+        <p className="text-xs font-medium text-green-600 mt-2">
+          Gas Savings: {gasAnalysis.savings_absolute.toLocaleString()}
         </p>
-      )}
-      {suggestion.code_location && (
-        <p className="text-xs opacity-75 mt-1">Location: {suggestion.code_location}</p>
       )}
     </motion.div>
   );
 };
 
 const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({ report, className }) => {
-  const getScoreColor = (score: number) => {
-    if (score >= 80) return 'text-green-600';
-    if (score >= 60) return 'text-yellow-600';
+  const getScoreColor = (score?: number) => {
+    if (!score) return 'text-gray-500';
+    if (score >= 8) return 'text-green-600';
+    if (score >= 6) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case 'LOW': return 'text-green-600 bg-green-50 border-green-200';
-      case 'MEDIUM': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      case 'HIGH': return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'CRITICAL': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  };
+  // The getRiskColor function has been completely removed.
+
+  const vulnerabilities = report.vulnerabilities || [];
+  const gasAnalysisPerFunction = report.gas_analysis_per_function || [];
+  const generalSuggestions = report.general_suggestions || [];
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -115,23 +107,11 @@ const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({ report, className }) 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <div className="flex items-center space-x-3">
-            <Zap className="h-8 w-8 text-blue-500" />
-            <div>
-              <p className="text-sm text-gray-600">Gas Efficiency</p>
-              <p className={`text-2xl font-bold ${getScoreColor(report.gas_efficiency_score)}`}>
-                {report.gas_efficiency_score}%
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="flex items-center space-x-3">
             <Shield className="h-8 w-8 text-green-500" />
             <div>
-              <p className="text-sm text-gray-600">Security Issues</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {report.security_issues.length}
+              <p className="text-sm text-gray-600">Security Score</p>
+              <p className={`text-2xl font-bold ${getScoreColor(report.overall_security_score)}`}>
+                {report.overall_security_score ? `${report.overall_security_score}/10` : 'N/A'}
               </p>
             </div>
           </div>
@@ -142,8 +122,8 @@ const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({ report, className }) 
             <TrendingUp className="h-8 w-8 text-purple-500" />
             <div>
               <p className="text-sm text-gray-600">Code Quality</p>
-              <p className={`text-2xl font-bold ${getScoreColor(report.code_quality_metrics.complexity_score)}`}>
-                {report.code_quality_metrics.complexity_score}%
+              <p className={`text-2xl font-bold ${getScoreColor(report.overall_code_quality_score)}`}>
+                {report.overall_code_quality_score ? `${report.overall_code_quality_score}/10` : 'N/A'}
               </p>
             </div>
           </div>
@@ -151,108 +131,102 @@ const AnalysisDisplay: React.FC<AnalysisDisplayProps> = ({ report, className }) 
 
         <Card>
           <div className="flex items-center space-x-3">
-            <AlertTriangle className="h-8 w-8 text-orange-500" />
+            <AlertTriangle className="h-8 w-8 text-red-500" />
             <div>
-              <p className="text-sm text-gray-600">Overall Risk</p>
-              <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getRiskColor(report.vulnerability_assessment.overall_risk)}`}>
-                {report.vulnerability_assessment.overall_risk}
-              </span>
+              <p className="text-sm text-gray-600">Vulnerabilities</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {vulnerabilities.length} {/* MODIFIED: Use derived constant */}
+              </p>
             </div>
           </div>
         </Card>
-      </div>
 
-      {/* Code Quality Metrics */}
-      <Card title="Code Quality Metrics">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Complexity</p>
-            <p className={`text-xl font-bold ${getScoreColor(report.code_quality_metrics.complexity_score)}`}>
-              {report.code_quality_metrics.complexity_score}%
-            </p>
+        <Card>
+          <div className="flex items-center space-x-3">
+            <Zap className="h-8 w-8 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-600">Estimated Gas</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {report.estimated_total_gas_original ? report.estimated_total_gas_original.toLocaleString() : 'N/A'}
+              </p>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Readability</p>
-            <p className={`text-xl font-bold ${getScoreColor(report.code_quality_metrics.readability_score)}`}>
-              {report.code_quality_metrics.readability_score}%
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Maintainability</p>
-            <p className={`text-xl font-bold ${getScoreColor(report.code_quality_metrics.maintainability_score)}`}>
-              {report.code_quality_metrics.maintainability_score}%
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-1">Test Coverage</p>
-            <p className={`text-xl font-bold ${getScoreColor(report.code_quality_metrics.test_coverage_estimate)}`}>
-              {report.code_quality_metrics.test_coverage_estimate}%
-            </p>
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </div> {/* MODIFIED: Extra closing tags were removed from here in previous attempt, ensured correctness */}
 
-      {/* Security Issues */}
-      {report.security_issues.length > 0 && (
-        <Card title="Security Issues" subtitle={`${report.security_issues.length} issue(s) found`}>
-          <div className="space-y-3">
-            {report.security_issues.map((issue, index) => (
-              <SecurityIssueItem key={index} issue={issue} />
+      {/* Vulnerabilities Section */}
+      {vulnerabilities.length > 0 && ( /* MODIFIED: Use derived constant */
+        <Card title="Security Vulnerabilities">
+          <div className="space-y-4">
+            {vulnerabilities.map((vulnerability, index) => ( /* MODIFIED: Use derived constant */
+              <VulnerabilityItem key={index} vulnerability={vulnerability} />
             ))}
           </div>
         </Card>
       )}
 
-      {/* Optimization Suggestions */}
-      {report.optimization_suggestions.length > 0 && (
-        <Card title="Optimization Suggestions" subtitle={`${report.optimization_suggestions.length} suggestion(s)`}>
-          <div className="space-y-3">
-            {report.optimization_suggestions.map((suggestion, index) => (
-              <OptimizationItem key={index} suggestion={suggestion} />
+      {/* Gas Analysis Section */}
+      {gasAnalysisPerFunction.length > 0 && ( /* MODIFIED: Use derived constant */
+        <Card title="Gas Analysis Per Function">
+          <div className="space-y-4">
+            {gasAnalysisPerFunction.map((gasAnalysis, index) => ( /* MODIFIED: Use derived constant */
+              <GasFunctionItem key={index} gasAnalysis={gasAnalysis} />
             ))}
           </div>
         </Card>
       )}
 
-      {/* Vulnerability Assessment */}
-      <Card title="Vulnerability Assessment">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Overall Risk Level:</span>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRiskColor(report.vulnerability_assessment.overall_risk)}`}>
-              {report.vulnerability_assessment.overall_risk}
-            </span>
+      {/* General Suggestions */}
+      {generalSuggestions.length > 0 && ( /* MODIFIED: Use derived constant */
+        <Card title="General Suggestions">
+          <div className="space-y-2">
+            {generalSuggestions.map((suggestion, index) => ( /* MODIFIED: Use derived constant */
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-start space-x-2"
+              >
+                <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-gray-700">{suggestion}</p>
+              </motion.div>
+            ))}
           </div>
-          
-          {report.vulnerability_assessment.detected_patterns.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Detected Patterns:</h4>
-              <ul className="space-y-1">
-                {report.vulnerability_assessment.detected_patterns.map((pattern, index) => (
-                  <li key={index} className="text-sm text-gray-600 flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-2 text-blue-500" />
-                    {pattern}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          {report.vulnerability_assessment.recommendations.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium mb-2">Recommendations:</h4>
-              <ul className="space-y-1">
-                {report.vulnerability_assessment.recommendations.map((recommendation, index) => (
-                  <li key={index} className="text-sm text-gray-600 flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                    {recommendation}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      </Card>
+        </Card>
+      )}
+
+      {/* Gas Savings Summary */}
+      {(report.total_gas_savings_absolute || report.total_gas_savings_percentage) && (
+        <Card title="Gas Optimization Summary">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {report.estimated_total_gas_original && (
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Original Gas</p>
+                <p className="text-xl font-bold text-gray-900">
+                  {report.estimated_total_gas_original.toLocaleString()}
+                </p>
+              </div>
+            )}
+            {report.estimated_total_gas_optimized && (
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Optimized Gas</p>
+                <p className="text-xl font-bold text-green-600">
+                  {report.estimated_total_gas_optimized.toLocaleString()}
+                </p>
+              </div>
+            )}
+            {report.total_gas_savings_percentage && (
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-1">Gas Savings</p>
+                <p className="text-xl font-bold text-green-600">
+                  {report.total_gas_savings_percentage.toFixed(1)}%
+                </p>
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
     </div>
   );
 };

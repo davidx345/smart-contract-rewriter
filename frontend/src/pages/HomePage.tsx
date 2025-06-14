@@ -5,21 +5,22 @@ import ContractFormComponent from '../components/contract/ContractForm';
 import AnalysisDisplay from '../components/contract/AnalysisDisplay';
 import RewriteDisplay from '../components/contract/RewriteDisplay';
 import Spinner from '../components/ui/Spinner';
-import type { ContractForm, AnalysisReport, RewriteReport, ContractOutput, APIError, ValidationError } from '../types';
 import { apiService } from '../services/api';
+import type { ContractForm, ContractOutput, APIError, ValidationError } from '../types';
 
 const HomePage: React.FC = () => {
-  const [analysisReport, setAnalysisReport] = useState<AnalysisReport | null>(null);
-  const [rewriteReport, setRewriteReport] = useState<RewriteReport | null>(null);
-  const [rewrittenCode, setRewrittenCode] = useState<string>('');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isRewriting, setIsRewriting] = useState(false);
-  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');  const handleAnalyze = async (formData: ContractForm) => {
-    setIsAnalyzing(true);
+  const [contractOutput, setContractOutput] = useState<ContractOutput | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null); // UI error state
+  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
+
+  const handleAnalyze = async (formData: ContractForm) => {
+    setIsLoading(true);
+    setError(null); // Clear UI error
+    setContractOutput(null); // Clear previous output
     try {
-      // Extract contract name from code if not provided
       const extractContractName = (code: string): string => {
-        const match = code.match(/contract\s+(\w+)/);
+        const match = code.match(/contract\\s+(\\w+)/);
         return match ? match[1] : "UntitledContract";
       };
 
@@ -28,46 +29,59 @@ const HomePage: React.FC = () => {
         contract_name: formData.contract_name?.trim() || extractContractName(formData.contract_code),
         compiler_version: formData.target_solidity_version || "0.8.19"
       };
-
-      const report = await apiService.analyzeContract(contractInput);
-      setAnalysisReport(report);
-      setActiveView('analysis');      toast.success('Contract analysis completed!');
-    } catch (error: unknown) {
-      const apiError = error as APIError;
-      console.error('Analysis failed:', error);
-      setAnalysisReport(null); // Explicitly reset state on error
+      const result: ContractOutput = await apiService.analyzeContract(contractInput);
+      setContractOutput(result);
+      if (result.analysis_report) {
+        setActiveView('analysis');
+        toast.success(result.message || 'Contract analysis completed!');
+      } else {
+        setError(result.message || 'Analysis did not produce a report.');
+        toast.error(result.message || 'Analysis did not produce a report.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as APIError;
+      console.error('Analysis failed:', err);
+      setContractOutput(null);
       let errorMessage = 'Failed to analyze contract';
       if (apiError.detail) {
         if (Array.isArray(apiError.detail)) {
-          // Handle Pydantic validation errors
-          errorMessage = apiError.detail.map((err: ValidationError) => err.msg || String(err)).join(', ');
+          errorMessage = apiError.detail.map((validationErr: ValidationError) => validationErr.msg || String(validationErr)).join(', ');
         } else {
           errorMessage = apiError.detail;
         }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
-      
+      setError(errorMessage);
       toast.error(errorMessage);
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
-  };  const handleRewrite = async (formData: ContractForm) => {
-    setIsRewriting(true);
+  };
+
+  const handleRewrite = async (formData: ContractForm) => {
+    if (!formData.contract_code) {
+      setError("Please enter some contract code.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null); // Clear UI error
+    // Preserve analysis report if it exists, clear rewrite specific parts
+    setContractOutput(prev => prev ? { ...prev, rewrite_report: undefined, rewritten_code: undefined, message: 'Processing rewrite...' } : null);
     try {
-      // Extract contract name from code if not provided
       const extractContractName = (code: string): string => {
-        const match = code.match(/contract\s+(\w+)/);
+        const match = code.match(/contract\\s+(\\w+)/);
         return match ? match[1] : "UntitledContract";
       };
 
-      // Map frontend focus areas to backend optimization goals
       const optimizationGoalsMap = {
         'GAS_OPTIMIZATION': 'gas_efficiency',
-        'SECURITY': 'security_hardening', 
+        'SECURITY': 'security_hardening',
         'READABILITY': 'readability',
         'BEST_PRACTICES': 'modularity'
       } as const;
 
-      const optimization_goals = formData.focus_areas.map(area => 
+      const optimization_goals = formData.focus_areas.map(area =>
         optimizationGoalsMap[area as keyof typeof optimizationGoalsMap] || 'gas_efficiency'
       );
 
@@ -77,40 +91,48 @@ const HomePage: React.FC = () => {
         compiler_version: formData.target_solidity_version || "0.8.19",
         optimization_goals,
         preserve_functionality: formData.preserve_functionality
-      };      const result: ContractOutput = await apiService.rewriteContract(optimizationRequest);
-      setRewriteReport(result.rewrite_report);
-      setRewrittenCode(result.rewritten_code);
-      setAnalysisReport(result.analysis_report);
-      setActiveView('rewrite');      toast.success('Contract rewrite completed!');
-    } catch (error: unknown) {
-      const apiError = error as APIError;
-      console.error('Rewrite failed:', error);
-      // Explicitly reset relevant states on error
-      setRewriteReport(null);
-      setRewrittenCode('');
-      // Consider if analysisReport should also be reset if rewrite depends on a consistent state
-      // setAnalysisReport(null); 
+      };
+      const result: ContractOutput = await apiService.rewriteContract(optimizationRequest);
+      // Update contractOutput with the new rewrite result, keeping existing analysis if any
+      setContractOutput(prev => ({
+        ...(prev || { original_code: formData.contract_code, request_id: '', processing_time_seconds: 0, message: '' }), // Ensure base structure if prev is null
+        ...result // Spread the new result, overwriting relevant fields
+      }));
+      if (result.rewritten_code && result.rewrite_report) {
+        setActiveView('rewrite');
+        toast.success(result.message || 'Contract rewrite completed!');
+      } else {
+        setError(result.message || 'Rewrite did not produce the expected output.');
+        toast.error(result.message || 'Rewrite did not produce the expected output.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as APIError;
+      console.error('Rewrite failed:', err);
       let errorMessage = 'Failed to rewrite contract';
       if (apiError.detail) {
         if (Array.isArray(apiError.detail)) {
-          // Handle Pydantic validation errors
-          errorMessage = apiError.detail.map((err: ValidationError) => err.msg || String(err)).join(', ');
+          errorMessage = apiError.detail.map((validationErr: ValidationError) => validationErr.msg || String(validationErr)).join(', ');
         } else {
           errorMessage = apiError.detail;
         }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
       }
-      
+      setError(errorMessage);
+      // When rewrite fails, we might want to clear only rewrite-specific parts or keep existing state
+      setContractOutput(prev => prev ? 
+        { ...prev, rewrite_report: undefined, rewritten_code: undefined, message: errorMessage } : 
+        { request_id: "", original_code: formData.contract_code, processing_time_seconds:0, message: errorMessage });
       toast.error(errorMessage);
     } finally {
-      setIsRewriting(false);
+      setIsLoading(false);
     }
   };
 
   const resetView = () => {
     setActiveView('form');
-    setAnalysisReport(null);
-    setRewriteReport(null);
-    setRewrittenCode('');
+    setContractOutput(null);
+    setError(null);
   };
 
   return (
@@ -179,20 +201,23 @@ const HomePage: React.FC = () => {
           key={activeView}
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
+          transition={{ duration: 0.6 }}
         >
           {activeView === 'form' && (
-            <div className="max-w-4xl mx-auto">
-              <ContractFormComponent
+            <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-8">
+              <h2 className="text-2xl font-bold mb-6 text-center">
+                Analyze and Rewrite Your Contract
+              </h2>
+              <ContractFormComponent 
                 onAnalyze={handleAnalyze}
                 onRewrite={handleRewrite}
-                isAnalyzing={isAnalyzing}
-                isRewriting={isRewriting}
+                isAnalyzing={isLoading}
+                isRewriting={isLoading}
               />
             </div>
           )}
 
-          {activeView === 'analysis' && analysisReport && (
+          {activeView === 'analysis' && contractOutput?.analysis_report && (
             <div className="max-w-7xl mx-auto">
               <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -202,11 +227,11 @@ const HomePage: React.FC = () => {
                   Comprehensive analysis of your smart contract
                 </p>
               </div>
-              <AnalysisDisplay report={analysisReport} />
+              <AnalysisDisplay report={contractOutput.analysis_report} />
             </div>
           )}
 
-          {activeView === 'rewrite' && rewriteReport && (
+          {activeView === 'rewrite' && contractOutput?.rewrite_report && contractOutput?.rewritten_code && contractOutput?.original_code && (
             <div className="max-w-7xl mx-auto">
               <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
@@ -216,16 +241,19 @@ const HomePage: React.FC = () => {
                   Your optimized smart contract with improvements
                 </p>
               </div>
-              <RewriteDisplay 
-                report={rewriteReport}
-                rewrittenCode={rewrittenCode}
+              <RewriteDisplay
+                report={contractOutput.rewrite_report} // Use snake_case
+                originalCode={contractOutput.original_code} // Use snake_case
+                rewrittenCode={contractOutput.rewritten_code} // Use snake_case
+                isLoading={isLoading}
+                error={error} // Pass the UI error state here
               />
             </div>
           )}
         </motion.div>
 
         {/* Loading States */}
-        {(isAnalyzing || isRewriting) && (
+        {isLoading && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -235,10 +263,10 @@ const HomePage: React.FC = () => {
               <div className="text-center">
                 <Spinner size="lg" className="mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  {isAnalyzing ? 'Analyzing Contract...' : 'Rewriting Contract...'}
+                  {activeView === 'analysis' ? 'Analyzing Contract...' : 'Rewriting Contract...'}
                 </h3>
                 <p className="text-gray-600">
-                  {isAnalyzing 
+                  {activeView === 'analysis' 
                     ? 'AI is analyzing your contract for security issues and optimization opportunities.'
                     : 'AI is rewriting your contract with optimizations and improvements.'
                   }
