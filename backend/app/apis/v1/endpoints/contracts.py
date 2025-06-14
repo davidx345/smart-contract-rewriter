@@ -23,7 +23,7 @@ router = APIRouter()
 async def analyze_contract(
     request: Request,
     contract_input: ContractInput,
-    background_tasks: BackgroundTasks = BackgroundTasks(),
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ) -> Any:
     """
