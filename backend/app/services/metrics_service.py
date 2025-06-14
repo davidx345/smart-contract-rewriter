@@ -98,7 +98,9 @@ class MetricsService:
     
     def processing_time(self, operation_type: str):
         """Decorator for measuring processing time"""
+        import functools
         def decorator(func):
+            @functools.wraps(func)
             async def wrapper(*args, **kwargs):
                 start_time = time.time()
                 try:
