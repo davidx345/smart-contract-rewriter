@@ -22,11 +22,10 @@ router = APIRouter()
 @metrics_service.processing_time("analysis")
 async def analyze_contract(
     request: Request,
-    contract_input: ContractInput = Body(...),
+    contract_input: ContractInput,
     background_tasks: BackgroundTasks = BackgroundTasks(),
     db: Session = Depends(get_db)
 ) -> Any:
-    print("/analyze RAW BODY:", await request.body())  # Log the raw request body for debugging
     """
     Analyze a smart contract for vulnerabilities, gas inefficiencies, and code quality.
     Stores the analysis result in the database.
