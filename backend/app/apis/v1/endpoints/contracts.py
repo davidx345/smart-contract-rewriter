@@ -168,7 +168,7 @@ def log_analysis_to_db(
             original_code=contract_input.source_code,
             analysis_report=analysis_result.analysis_report.model_dump() if success and analysis_result and analysis_result.analysis_report else {"error": error_message or "Analysis failed"},
             vulnerabilities_found=[v.model_dump() for v in analysis_result.analysis_report.vulnerabilities] if success and analysis_result and analysis_result.analysis_report and analysis_result.analysis_report.vulnerabilities else None,
-            gas_analysis=analysis_result.analysis_report.gas_analysis_per_function if success and analysis_result and analysis_result.analysis_report else None,
+            gas_analysis=[gas.model_dump() for gas in analysis_result.analysis_report.gas_analysis_per_function] if success and analysis_result and analysis_result.analysis_report and analysis_result.analysis_report.gas_analysis_per_function else None,
             requested_at=datetime.datetime.now(datetime.timezone.utc),
             completed_at=datetime.datetime.now(datetime.timezone.utc) if success else None
             # user_id can be added if you have user authentication
