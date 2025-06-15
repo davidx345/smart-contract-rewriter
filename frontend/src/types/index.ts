@@ -39,6 +39,7 @@ export interface RewriteReport {
   suggestions?: string[]
   gas_optimization_details?: GasOptimizationDetails | null
   security_improvements?: string[]
+  rewritten_code?: string; // Added for consistency, though primarily in ContractOutput
 
   // Original fields from backend schema - kept as optional 
   // if they might still be used or for other parts of app
@@ -98,15 +99,30 @@ export interface CompilationStatus {
   errors: string[]
 }
 
+export interface ContractHistoryItemDetails {
+  analysis_report?: AnalysisReport
+  rewrite_report?: RewriteReport
+  original_code?: string; // Added for potential inclusion in history details
+  rewritten_code?: string; // Added for potential inclusion in history details
+  // Add other fields from the API's details object if necessary
+}
+
 export interface ContractHistoryItem {
   id: string
-  contract_name?: string // Added for consistency with usage
-  original_contract: string
-  rewritten_contract: string
-  analysis_report: AnalysisReport
-  rewrite_report: RewriteReport
-  created_at: string
-  request_id: string
+  type: 'analysis' | 'rewrite' // From API response
+  contract_name?: string
+  timestamp: string // From API response (should be created_at?)
+  success?: boolean // From API response
+  optimization_goals?: string[] | null // From API response
+  details: ContractHistoryItemDetails // Nested details
+  contract_address?: string; // Added optional field
+  blockchain?: string; // Added optional field
+  // original_contract: string; // These are not directly in history items from sample
+  // rewritten_contract: string; // These are not directly in history items from sample
+  // analysis_report: AnalysisReport; // Moved to details
+  // rewrite_report: RewriteReport; // Moved to details
+  created_at: string // This seems to be the same as timestamp in the API response, clarify if different
+  request_id?: string // request_id might not be in the list view, confirm from backend
 }
 
 export interface ContractHistoryResponse {

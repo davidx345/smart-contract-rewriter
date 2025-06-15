@@ -1,29 +1,35 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, Download, Trash2, Search, Filter, Calendar } from 'lucide-react';
+import { Eye, Download, Trash2, Search, Calendar, X } from 'lucide-react'; // Removed Filter
 import { toast } from 'react-hot-toast';
-import Card from '../components/ui/Card';
+// import Card from '../components/ui/Card'; // Removed Card import
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Spinner from '../components/ui/Spinner';
-import type { ContractHistoryItem, ContractHistoryResponse, APIError, ValidationError } from '../types'; // Removed AnalysisReport, RewriteReport
+import AnalysisDisplay from '../components/contract/AnalysisDisplay';
+import RewriteDisplay from '../components/contract/RewriteDisplay';
+import type { ContractHistoryItem, ContractHistoryResponse, APIError, ValidationError, ContractHistoryItemDetails } from '../types';
 import { apiService } from '../services/api';
-import { formatDate, formatGasAmount, downloadFile } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 
 const ContractHistoryPage: React.FC = () => {
   const [contracts, setContracts] = useState<ContractHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  // const [_filterCriteria, _setFilterCriteria] = useState<keyof ContractHistoryItem['details'] | 'all'>('all'); // Marked as unused for now
+  // const [_sortOrder, _setSortOrder] = useState<'asc' | 'desc'>('desc'); // Marked as unused for now
+  const [selectedContractDetails, setSelectedContractDetails] = useState<ContractHistoryItemDetails | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedContract, setSelectedContract] = useState<ContractHistoryItem | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const pageSize = 10; // Or make this configurable
 
-  const pageSize = 10; // This is now 'limit' for the API call
   const loadContracts = useCallback(async () => {
     try {
       setIsLoading(true);
+      // TODO: Implement actual filtering and sorting in the API call if desired,
+      // or apply locally if searchTerm, filterCriteria, sortOrder are to be used for client-side filtering/sorting.
+      // For now, they are not used in the API call or local filtering.
       const response: ContractHistoryResponse = await apiService.getContractHistory(currentPage, pageSize);
       setContracts(response.contracts);
       setTotalPages(Math.ceil(response.total / pageSize));
@@ -36,7 +42,7 @@ const ContractHistoryPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, pageSize]); // pageSize is a dependency now
+  }, [currentPage, pageSize]);
 
   useEffect(() => {
     loadContracts();
@@ -50,6 +56,12 @@ const ContractHistoryPage: React.FC = () => {
       await apiService.deleteContract(contractId);
       setContracts(prevContracts => prevContracts.filter(c => c.id !== contractId));
       toast.success('Contract deleted successfully');
+      // Reload contracts if on the last page and it becomes empty
+      if (contracts.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      } else {
+        loadContracts(); // Reload to get correct total pages and potentially new items if pagination changes
+      }
     } catch (error: unknown) {
       const apiError = error as APIError;
       const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
@@ -57,126 +69,65 @@ const ContractHistoryPage: React.FC = () => {
     }
   };
 
-  const handleViewDetails = (contract: ContractHistoryItem) => {
-    setSelectedContract(contract);
-    setShowDetails(true);
-  };
-
-  const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
-    // Safely access potentially undefined properties
-    const code = type === 'original' ? contract.original_contract : contract.rewritten_contract;
-    if (!code) {
-      toast.error(`No ${type} code available for this contract.`);
-      return;
+  const handleViewDetails = (item: ContractHistoryItem) => {
+    if (item.details) {
+      setSelectedContractDetails(item.details);
+    } else {
+      console.warn("No details available for this contract in history item:", item);
+      toast.error("Details not available for this contract.");
     }
-    const filename = `${contract.contract_name || contract.id}_${type}_contract.sol`; // Use contract.contract_name or contract.id for filename
-    downloadFile(code, filename);
-    toast.success(`${type === 'original' ? 'Original' : 'Rewritten'} contract downloaded`);
   };
 
-  const filteredContracts = contracts.filter(contract =>
-    contract.id.toLowerCase().includes(searchTerm.toLowerCase()) || // Search by ID
-    (contract.contract_name && contract.contract_name.toLowerCase().includes(searchTerm.toLowerCase())) || // Search by contract name
-    (contract.original_contract && contract.original_contract.toLowerCase().includes(searchTerm.toLowerCase())) // Corrected: use original_contract
-  );
-
-  const getOptimizationSummary = (contract: ContractHistoryItem) => {
-    // Safe navigation for potentially undefined reports or nested properties
-    const gasSavingsPercentage = contract.rewrite_report?.gas_optimization_details?.gas_savings_percentage;
-    const securityIssuesCount = contract.analysis_report?.vulnerabilities?.length ?? 0;
-    const optimizationsAppliedCount = contract.rewrite_report?.suggestions?.length ?? 0; // Or another relevant field
-
-    return {
-      gasSavings: typeof gasSavingsPercentage === 'number' ? gasSavingsPercentage : 0,
-      securityIssues: securityIssuesCount,
-      optimizations: optimizationsAppliedCount
-    };
+  const handleCloseModal = () => {
+    setSelectedContractDetails(null);
   };
 
-  const ContractCard: React.FC<{ contract: ContractHistoryItem }> = ({ contract }) => {
-    const summary = getOptimizationSummary(contract);
-    
+  // Client-side filtering based on searchTerm
+  const filteredContracts = contracts.filter(contract => {
+    const term = searchTerm.toLowerCase();
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="card hover:shadow-xl transition-shadow duration-300"
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900 mb-1">
-              {/* Display contract name if available, otherwise fallback to ID */}
-              {contract.contract_name || `Contract #${contract.id.slice(-8)}`}
-            </h3>
-            <p className="text-sm text-gray-600">
-              {formatDate(contract.created_at)} {/* Corrected: use contract.created_at */}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleViewDetails(contract)}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteContract(contract.id)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Gas Savings</p>
-            <p className="text-lg font-bold text-green-600">
-              {summary.gasSavings.toFixed(1)}%
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Security Issues</p>
-            <p className="text-lg font-bold text-orange-600">
-              {summary.securityIssues}
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600">Optimizations</p>
-            <p className="text-lg font-bold text-blue-600">
-              {summary.optimizations}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleDownloadContract(contract, 'original')}
-            className="flex-1"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Original
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleDownloadContract(contract, 'rewritten')}
-            className="flex-1"
-          >
-            <Download className="h-4 w-4 mr-1" />
-            Optimized
-          </Button>
-        </div>
-      </motion.div>
+      contract.id.toLowerCase().includes(term) ||
+      (contract.contract_name && contract.contract_name.toLowerCase().includes(term)) ||
+      (contract.contract_address && contract.contract_address.toLowerCase().includes(term)) ||
+      (contract.blockchain && contract.blockchain.toLowerCase().includes(term))
+      // Add more fields to search if needed, e.g., from contract.details
     );
+  });
+  
+  // Placeholder for download functionality
+  const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
+    toast.success(`Download for ${type} contract ${contract.id} - Not yet implemented.`);
+    // Actual implementation would require fetching the full code if not already available
+    // For example:
+    // const codeToDownload = type === 'original' ? contract.details.original_code : contract.details.rewrite_report?.rewritten_code;
+    // if (codeToDownload) {
+    //   downloadFile(codeToDownload, `${contract.contract_name || contract.id}_${type}.sol`, 'text/plain');
+    // } else {
+    //   toast.error('Contract code not available for download.');
+    // }
   };
+
+
+  if (isLoading && contracts.length === 0) { // Show spinner only on initial load
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error && contracts.length === 0) { // Show error only if no data could be loaded
+    return (
+      <div className="flex flex-col justify-center items-center h-screen text-red-500">
+        <p className="text-2xl mb-4">Error loading contract history</p>
+        <p>{error}</p>
+        <Button onClick={loadContracts} className="mt-4">Try Again</Button>
+      </div>
+    );
+  }
 
   const ContractDetailsModal: React.FC = () => {
-    if (!selectedContract) return null;
+    if (!selectedContractDetails) return null;
 
     return (
       <motion.div
@@ -184,7 +135,7 @@ const ContractHistoryPage: React.FC = () => {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-        onClick={() => setShowDetails(false)}
+        onClick={handleCloseModal}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
@@ -195,183 +146,36 @@ const ContractHistoryPage: React.FC = () => {
         >
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">
-                {selectedContract.contract_name || `Contract Details (${selectedContract.id.slice(-8)})`}
+              <h2 className="text-2xl font-semibold text-gray-800">
+                Contract Details
               </h2>
-              {/* Changed size="icon" to size="sm" */}
-              <Button variant="ghost" size="sm" onClick={() => setShowDetails(false)}>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <Button variant="ghost" size="sm" onClick={handleCloseModal}>
+                <X className="h-6 w-6" /> {/* Assuming X icon for close */}
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <Card className="p-4">
-                <h3 className="font-semibold text-gray-700 mb-2">Summary</h3>
-                <p className="text-sm text-gray-600">Processed: {formatDate(selectedContract.created_at)}</p>
-                <p className="text-sm text-gray-600">Request ID: {selectedContract.request_id}</p>
-                {selectedContract.analysis_report?.overall_code_quality_score !== undefined && selectedContract.analysis_report?.overall_code_quality_score !== null && (
-                  <p className="text-sm text-gray-600">Code Quality Score: {(selectedContract.analysis_report.overall_code_quality_score).toFixed(1)}%</p>
-                )}
-                {selectedContract.analysis_report?.overall_security_score !== undefined && selectedContract.analysis_report?.overall_security_score !== null && (
-                  <p className="text-sm text-gray-600">Security Score: {(selectedContract.analysis_report.overall_security_score).toFixed(1)}%</p>
-                )}
-              </Card>
-              <Card className="p-4">
-                <h3 className="font-semibold text-gray-700 mb-2">Gas Optimization</h3>
-                {selectedContract.rewrite_report?.gas_optimization_details ? (
-                  <>
-                    <p className="text-sm text-gray-600">
-                      Original Gas: {formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.original_estimated_gas ?? 0)}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Optimized Gas: {formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.optimized_estimated_gas ?? 0)}
-                    </p>
-                    <p className="text-sm text-green-600 font-semibold">
-                      Savings: {(selectedContract.rewrite_report.gas_optimization_details.gas_savings_percentage ?? 0).toFixed(1)}%
-                      ({formatGasAmount(selectedContract.rewrite_report.gas_optimization_details.gas_saved ?? 0)})
-                    </p>
-                  </>
-                ) : <p className="text-sm text-gray-500">No gas optimization details available.</p>}
-              </Card>
-            </div>
-
-            {/* Analysis Report Details */}
-            {selectedContract.analysis_report && (
-              <Card className="p-4 mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">Analysis Report</h3>
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="text-md font-medium text-gray-600 mb-1">Vulnerabilities ({selectedContract.analysis_report.vulnerabilities?.length || 0})</h4>
-                    {selectedContract.analysis_report.vulnerabilities?.length > 0 ? (
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.analysis_report.vulnerabilities.map((vuln, index: number) => (
-                          <li key={index} className="mb-1">
-                            <span className={`font-semibold ${vuln.severity === 'HIGH' || vuln.severity === 'CRITICAL' ? 'text-red-600' : vuln.severity === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'}`}>
-                              {vuln.type} ({vuln.severity})
-                            </span>
-                            {vuln.line_number && ` - Line ${vuln.line_number}`}: {vuln.description}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : <p className="text-sm text-gray-500">No vulnerabilities detected.</p>}
-                  </div>
-                  <div>
-                    <h4 className="text-md font-medium text-gray-600 mb-1">Gas Analysis per Function</h4>
-                    {selectedContract.analysis_report.gas_analysis_per_function?.length > 0 ? (
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.analysis_report.gas_analysis_per_function.map((gas, index: number) => (
-                          <li key={index}>
-                            {gas.function_name}: Original: {formatGasAmount(gas.original_gas ?? 0)}, Optimized: {formatGasAmount(gas.optimized_gas ?? 0)} (Savings: {(gas.savings_percentage ?? 0).toFixed(1)}%)
-                          </li>
-                        ))}
-                      </ul>
-                    ) : <p className="text-sm text-gray-500">No per-function gas analysis available.</p>}
-                  </div>
-                  {selectedContract.analysis_report.general_suggestions?.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-600 mb-1">General Suggestions</h4>
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.analysis_report.general_suggestions.map((suggestion: string, index: number) => (
-                          <li key={index}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Rewrite Report Details */}
-            {selectedContract.rewrite_report && (
-              <Card className="p-4 mb-6">
-                <h3 className="font-semibold text-gray-700 mb-3">Rewrite Report</h3>
-                <div className="space-y-3">
-                  {selectedContract.rewrite_report.suggestions && selectedContract.rewrite_report.suggestions.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-600 mb-1">Suggestions Applied ({selectedContract.rewrite_report.suggestions.length})</h4>
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.rewrite_report.suggestions.map((suggestion: string, index: number) => (
-                          <li key={index}>{suggestion}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {selectedContract.rewrite_report.security_improvements && selectedContract.rewrite_report.security_improvements.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-600 mb-1">Security Improvements ({selectedContract.rewrite_report.security_improvements.length})</h4>
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.rewrite_report.security_improvements.map((improvement: string, index: number) => (
-                          <li key={index}>{improvement}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                   {selectedContract.rewrite_report.changes_summary && selectedContract.rewrite_report.changes_summary.length > 0 && (
-                    <div>
-                      <h4 className="text-md font-medium text-gray-600 mb-1">Changes Summary</h4>
-                      <ul className="list-disc list-inside text-sm text-gray-600 pl-4">
-                        {selectedContract.rewrite_report.changes_summary.map((change: string, index: number) => (
-                          <li key={index}>{change}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {selectedContract.rewrite_report.readability_notes && (
-                     <div>
-                      <h4 className="text-md font-medium text-gray-600 mb-1">Readability Notes</h4>
-                      <p className="text-sm text-gray-600">{selectedContract.rewrite_report.readability_notes}</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* Code Diff View (Placeholder or simplified) */}
-            <Card className="p-4">
-              <h3 className="font-semibold text-gray-700 mb-2">Code Versions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="text-md font-medium text-gray-600 mb-1">Original Code</h4>
-                  <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-auto max-h-60">
-                    <code>{selectedContract.original_contract}</code>
-                  </pre>
-                  {/* Changed variant="link" to variant="ghost" */}
-                  <Button 
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownloadContract(selectedContract, 'original')}
-                    className="mt-2"
-                  >
-                    Download Original
-                  </Button>
-                </div>
-                <div>
-                  <h4 className="text-md font-medium text-gray-600 mb-1">Rewritten Code</h4>
-                  {selectedContract.rewritten_contract ? (
-                    <>
-                      <pre className="bg-gray-100 p-3 rounded-md text-xs overflow-auto max-h-60">
-                        <code>{selectedContract.rewritten_contract}</code>
-                      </pre>
-                      {/* Changed variant="link" to variant="ghost" */}
-                      <Button 
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownloadContract(selectedContract, 'rewritten')}
-                        className="mt-2"
-                      >
-                        Download Rewritten
-                      </Button>
-                    </>
-                  ) : <p className="text-sm text-gray-500">No rewritten code available.</p>}
-                </div>
+            {selectedContractDetails.analysis_report && (
+              <div className="mb-8">
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Analysis Report</h3>
+                <AnalysisDisplay report={selectedContractDetails.analysis_report} />
               </div>
-            </Card>
+            )}            {selectedContractDetails.rewrite_report && (
+              <div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Rewrite Report</h3>
+                <RewriteDisplay 
+                  report={selectedContractDetails.rewrite_report}
+                  originalCode={selectedContractDetails.original_code || "Original code not available"}
+                  rewrittenCode={selectedContractDetails.rewritten_code || selectedContractDetails.rewrite_report.rewritten_code || "Rewritten code not available"}
+                  isLoading={false}
+                  error={null}
+                />
+              </div>
+            )}
+            
+            {!selectedContractDetails.analysis_report && !selectedContractDetails.rewrite_report && (
+                <p className="text-gray-600">No analysis or rewrite details available for this contract.</p>
+            )}
 
-            <div className="mt-6 flex justify-end">
-              <Button onClick={() => setShowDetails(false)}>Close</Button>
-            </div>
           </div>
         </motion.div>
       </motion.div>
@@ -379,99 +183,210 @@ const ContractHistoryPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Contract History</h1>
-          <p className="text-gray-600">View and manage your analyzed smart contracts</p>
+    <div className="container mx-auto p-4 md:p-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-3xl font-bold text-gray-800">Contract History</h1>
+        <p className="text-gray-600 mt-1">
+          Browse, view, and manage your past smart contract analyses and rewrites.
+        </p>
+      </motion.div>
+
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-grow w-full md:w-auto">
+          <Input
+            type="text"
+            placeholder="Search by ID, Name, Address, Chain..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 w-full"
+          />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
         </div>
-
-        {/* Filters and Search */}
-        <Card className="mb-8">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1">
-              <Input
-                placeholder="Search by contract ID or code..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full"
-              />
-            </div>
-            <div className="flex space-x-2">
-              <Button variant="outline">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-              <Button variant="outline" onClick={loadContracts}>
-                <Search className="h-4 w-4 mr-2" />
-                Refresh
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* Content */}
-        {isLoading ? (
-          <div className="flex justify-center items-center py-12">
-            <Spinner size="lg" />
-          </div>
-        ) : error ? (
-          <Card className="text-center py-12">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button onClick={loadContracts} variant="outline">
-              Try Again
-            </Button>
-          </Card>
-        ) : filteredContracts.length === 0 ? (
-          <Card className="text-center py-12">
-            <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No contracts found</h3>
-            <p className="text-gray-600">
-              {searchTerm ? 'No contracts match your search criteria.' : 'You haven\'t analyzed any contracts yet.'}
-            </p>
-          </Card>
-        ) : (
-          <>
-            {/* Contracts Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-              {filteredContracts.map((contract) => (
-                <ContractCard key={contract.id} contract={contract} />
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center items-center space-x-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </Button>
-                
-                <span className="text-sm text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                
-                <Button
-                  variant="outline"
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Contract Details Modal */}
-        {showDetails && <ContractDetailsModal />}
+        {/* Filter and Sort controls can be added here if needed */}
+        {/* Example:
+        <Select value={filterCriteria} onChange={(e) => setFilterCriteria(e.target.value as any)}>
+          <option value=\"all\">All</option>
+          <option value=\"contract_type\">Type</option>
+          <option value=\"vulnerabilities\">Vulnerabilities</option>
+        </Select>
+        <Select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}>
+          <option value=\"desc\">Newest First</option>
+          <option value=\"asc\">Oldest First</option>
+        </Select>
+        */}
       </div>
+
+      {isLoading && contracts.length > 0 && ( // Show loading indicator for subsequent loads
+        <div className="flex justify-center my-4">
+          <Spinner />
+        </div>
+      )}
+
+      {filteredContracts.length === 0 && !isLoading && (
+        <div className="text-center py-12">
+          <Calendar className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-900">No Contracts Found</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            {searchTerm ? "Try adjusting your search or filter terms." : "You haven't analyzed or rewritten any contracts yet."}
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredContracts.map(contract => (
+          <ContractCard 
+            key={contract.id} 
+            contract={contract} 
+            onViewDetails={handleViewDetails} 
+            onDeleteContract={handleDeleteContract} 
+            onDownloadContract={handleDownloadContract} 
+          />
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="mt-8 flex justify-center items-center space-x-2">
+          <Button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            variant="outline"
+          >
+            Previous
+          </Button>
+          <span className="text-gray-700">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            variant="outline"
+          >
+            Next
+          </Button>
+        </div>
+      )}
+
+      {selectedContractDetails && <ContractDetailsModal />}
     </div>
   );
 };
 
 export default ContractHistoryPage;
+
+// Helper component for Contract Card (can be moved to a separate file)
+const ContractCard: React.FC<{ 
+  contract: ContractHistoryItem;
+  onViewDetails: (contract: ContractHistoryItem) => void;
+  onDeleteContract: (contractId: string) => void;
+  onDownloadContract: (contract: ContractHistoryItem, type: 'original' | 'rewritten') => void;
+}> = ({ contract, onViewDetails, onDeleteContract, onDownloadContract }) => {
+  
+  const getOptimizationSummary = (item: ContractHistoryItem) => {
+    const gasSavingsPercentage = item.details?.rewrite_report?.gas_optimization_details?.gas_savings_percentage;
+    const securityIssuesCount = item.details?.analysis_report?.vulnerabilities?.length ?? 0;
+    const optimizationsAppliedCount = item.details?.rewrite_report?.suggestions?.length ?? 0;
+
+    return {
+      gasSavings: typeof gasSavingsPercentage === 'number' ? gasSavingsPercentage : 0,
+      securityIssues: securityIssuesCount,
+      optimizations: optimizationsAppliedCount
+    };
+  };
+  const summary = getOptimizationSummary(contract);
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-lg shadow-md p-5 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between"
+    >
+      <div>
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0"> {/* Added min-w-0 for truncation */}
+            <h3 className="text-lg font-semibold text-gray-800 truncate" title={contract.contract_name || `Contract ID: ${contract.id}`}>
+              {contract.contract_name || `Contract #${contract.id.slice(0,8)}...`}
+            </h3>
+            {contract.contract_address && (
+              <p className="text-xs text-gray-500 truncate" title={contract.contract_address}>
+                Address: {contract.contract_address}
+              </p>
+            )}
+            {contract.blockchain && (
+              <p className="text-xs text-gray-500">
+                Chain: {contract.blockchain}
+              </p>
+            )}
+            <p className="text-sm text-gray-500 mt-1">
+              {formatDate(contract.timestamp)}
+            </p>
+          </div>
+          <div className="flex flex-col space-y-1 ml-2"> {/* Changed to flex-col and added ml-2 */}            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onViewDetails(contract)}
+              title="View Details"
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDeleteContract(contract.id)}
+              className="text-red-500 hover:text-red-700"
+              title="Delete Contract"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-x-2 gap-y-1 mb-4 text-xs"> {/* Reduced gap and text size */}
+          <div className="text-center p-1 bg-green-50 rounded">
+            <p className="text-gray-600">Gas Saved</p>
+            <p className="font-bold text-green-600">
+              {summary.gasSavings.toFixed(1)}%
+            </p>
+          </div>
+          <div className="text-center p-1 bg-orange-50 rounded">
+            <p className="text-gray-600">Issues</p>
+            <p className="font-bold text-orange-600">
+              {summary.securityIssues}
+            </p>
+          </div>
+          <div className="text-center p-1 bg-blue-50 rounded">
+            <p className="text-gray-600">Optimized</p>
+            <p className="font-bold text-blue-600">
+              {summary.optimizations}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex space-x-2 mt-auto"> {/* Added mt-auto to push to bottom */}        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onDownloadContract(contract, 'original')}
+          className="flex-1"
+          disabled={!contract.details?.original_code}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          Original
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onDownloadContract(contract, 'rewritten')}
+          className="flex-1"
+          disabled={!contract.details?.rewritten_code && !contract.details?.rewrite_report?.rewritten_code}
+        >
+          <Download className="h-4 w-4 mr-1" />
+          Optimized
+        </Button>
+      </div>
+    </motion.div>
+  );
+};
