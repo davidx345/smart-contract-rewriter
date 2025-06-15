@@ -5,6 +5,8 @@ import Layout from './components/layout/Layout';
 import HomePage from './pages/HomePage';
 import ContractHistoryPage from './pages/ContractHistoryPage';
 import NotFoundPage from './pages/NotFoundPage';
+import { useState } from 'react'; // Import useState directly, React import removed
+import type { ContractOutput } from './types'; // Import ContractOutput type
 
 // Create a client
 const queryClient = new QueryClient({
@@ -17,13 +19,27 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  // Lifted state
+  const [contractOutput, setContractOutput] = useState<ContractOutput | null>(null);
+  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
+
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
         <div className="App">
           <Routes>
             <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
+              <Route 
+                index 
+                element={
+                  <HomePage 
+                    contractOutput={contractOutput}
+                    setContractOutput={setContractOutput}
+                    activeView={activeView}
+                    setActiveView={setActiveView}
+                  />
+                } 
+              />
               <Route path="history" element={<ContractHistoryPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Route>

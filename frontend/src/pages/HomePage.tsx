@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Added useEffect
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ContractFormComponent from '../components/contract/ContractForm';
@@ -8,11 +8,31 @@ import Spinner from '../components/ui/Spinner';
 import { apiService } from '../services/api';
 import type { ContractForm, ContractOutput, APIError, ValidationError } from '../types';
 
-const HomePage: React.FC = () => {
-  const [contractOutput, setContractOutput] = useState<ContractOutput | null>(null);
-  const [loadingAction, setLoadingAction] = useState<'analyze' | 'rewrite' | null>(null); // New state
+// Define props for HomePage
+interface HomePageProps {
+  contractOutput: ContractOutput | null;
+  setContractOutput: React.Dispatch<React.SetStateAction<ContractOutput | null>>;
+  activeView: 'form' | 'analysis' | 'rewrite';
+  setActiveView: React.Dispatch<React.SetStateAction<'form' | 'analysis' | 'rewrite'>>;
+}
+
+const HomePage: React.FC<HomePageProps> = ({ 
+  contractOutput, 
+  setContractOutput, 
+  activeView, 
+  setActiveView 
+}) => {
+  const [loadingAction, setLoadingAction] = useState<'analyze' | 'rewrite' | null>(null);
   const [error, setError] = useState<string | null>(null); // UI error state
-  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
+
+  // Effect to synchronize local state if global state changes externally (e.g. browser back button)
+  useEffect(() => {
+    // This effect can be expanded if more granular control is needed
+    // For now, it ensures that if contractOutput is null globally, the view resets to form.
+    if (contractOutput === null && activeView !== 'form') {
+      // setActiveView('form'); // This might be too aggressive, consider user experience
+    }
+  }, [contractOutput, activeView, setActiveView]);
 
   const handleAnalyze = async (formData: ContractForm) => {
     setLoadingAction('analyze'); // Set specific loading action
@@ -284,27 +304,21 @@ const HomePage: React.FC = () => {
 
       {/* Features Section (shown only on form view) */}
       {activeView === 'form' && (
-        <div className="bg-gray-50 py-16">
+        <div className="bg-white py-16"> {/* Ensure this div has a className and proper structure */}
           <div className="container mx-auto px-6">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-center mb-12"
-            >
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                Powered by Advanced AI
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900">
+                Powerful Features
               </h2>
-              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Our AI analyzes your smart contracts and provides comprehensive optimization recommendations
+              <p className="text-gray-600 mt-2">
+                Leverage AI to enhance your smart contracts in multiple ways.
               </p>
-            </motion.div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
                 {
                   title: 'Gas Optimization',
-                  description: 'Reduce transaction costs with intelligent gas usage optimization',
+                  description: 'Reduce transaction costs by optimizing gas usage',
                   icon: '⚡',
                   color: 'bg-yellow-100 text-yellow-600'
                 },
@@ -328,19 +342,19 @@ const HomePage: React.FC = () => {
                 }
               ].map((feature, index) => (
                 <motion.div
-                  key={feature.title}
+                  key={feature.title} // Ensure key is a string
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: 0.1 * index }}
-                  className="text-center"
+                  className="text-center p-6 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 >
-                  <div className={`w-16 h-16 ${feature.color} rounded-full flex items-center justify-center text-2xl mx-auto mb-4`}>
+                  <div className={`w-16 h-16 ${feature.color} rounded-full flex items-center justify-center text-3xl mx-auto mb-4`}>
                     {feature.icon}
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600">
+                  <p className="text-gray-700 text-sm">
                     {feature.description}
                   </p>
                 </motion.div>
