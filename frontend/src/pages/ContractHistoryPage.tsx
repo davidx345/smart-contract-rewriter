@@ -23,22 +23,25 @@ const ContractHistoryPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10; // Or make this configurable
-
   const loadContracts = useCallback(async () => {
     try {
       setIsLoading(true);
-      // TODO: Implement actual filtering and sorting in the API call if desired,
-      // or apply locally if searchTerm, filterCriteria, sortOrder are to be used for client-side filtering/sorting.
-      // For now, they are not used in the API call or local filtering.
       const response: ContractHistoryResponse = await apiService.getContractHistory(currentPage, pageSize);
-      setContracts(response.contracts);
-      setTotalPages(Math.ceil(response.total / pageSize));
+      // Ensure contracts is always an array
+      const contractsArray = Array.isArray(response.contracts) ? response.contracts : [];
+      setContracts(contractsArray);
+      setTotalPages(Math.ceil((response.total || contractsArray.length) / pageSize));
       setError(null);
     } catch (error: unknown) {
+      console.error('Error loading contracts:', error);
       const apiError = error as APIError;
-      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
-      setError(errorMessage || 'Failed to load contract history');
-      toast.error(errorMessage || 'Failed to load contract history');
+      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : 
+                          Array.isArray(apiError.detail) ? (apiError.detail as ValidationError[]).map(d => d.msg).join(', ') :
+                          'Failed to load contract history';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      // Set empty array on error to prevent filter errors
+      setContracts([]);
     } finally {
       setIsLoading(false);
     }
@@ -47,25 +50,28 @@ const ContractHistoryPage: React.FC = () => {
   useEffect(() => {
     loadContracts();
   }, [loadContracts]);
-
   const handleDeleteContract = async (contractId: string) => {
     if (!confirm('Are you sure you want to delete this contract?')) {
       return;
     }
     try {
       await apiService.deleteContract(contractId);
-      setContracts(prevContracts => prevContracts.filter(c => c.id !== contractId));
+      setContracts(prevContracts => (prevContracts || []).filter(c => c.id !== contractId));
       toast.success('Contract deleted successfully');
       // Reload contracts if on the last page and it becomes empty
-      if (contracts.length === 1 && currentPage > 1) {
+      const remainingContracts = (contracts || []).filter(c => c.id !== contractId);
+      if (remainingContracts.length === 0 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       } else {
         loadContracts(); // Reload to get correct total pages and potentially new items if pagination changes
       }
     } catch (error: unknown) {
+      console.error('Error deleting contract:', error);
       const apiError = error as APIError;
-      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
-      toast.error(errorMessage || 'Failed to delete contract');
+      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : 
+                          Array.isArray(apiError.detail) ? (apiError.detail as ValidationError[]).map(d => d.msg).join(', ') :
+                          'Failed to delete contract';
+      toast.error(errorMessage);
     }
   };
 
@@ -81,9 +87,8 @@ const ContractHistoryPage: React.FC = () => {
   const handleCloseModal = () => {
     setSelectedContractDetails(null);
   };
-
   // Client-side filtering based on searchTerm
-  const filteredContracts = contracts.filter(contract => {
+  const filteredContracts = (contracts || []).filter(contract => {
     const term = searchTerm.toLowerCase();
     return (
       contract.id.toLowerCase().includes(term) ||

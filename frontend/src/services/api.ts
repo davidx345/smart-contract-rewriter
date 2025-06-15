@@ -79,14 +79,22 @@ class APIService {
     const response = await this.api.post('/contracts/rewrite', optimizationRequest) // Removed /api/v1
     return response.data
   }
-
   // Get contract history
   async getContractHistory(page: number = 1, limit: number = 10): Promise<ContractHistoryResponse> {
     const skip = (page - 1) * limit;
     const response = await this.api.get('/contracts/history', { // Removed /api/v1
       params: { skip, limit } // Use skip and limit
     })
-    return response.data
+    
+    // The API returns an array directly, but we need to wrap it in the expected format
+    const contracts = Array.isArray(response.data) ? response.data : [];
+    
+    return {
+      contracts,
+      total: contracts.length, // Since we don't have total from API, use array length
+      page,
+      size: limit
+    }
   }
 
   // Get specific contract by ID
