@@ -41,9 +41,28 @@ def create_tables():
                 print(f"🔨 Missing tables: {', '.join(missing_tables)}")
                 print("Creating missing tables...")
         
-        # Create only missing tables
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-        print("✅ All tables created successfully!")
+        # Import the individual table classes
+        from app.schemas.contract_db_schemas import User, ContractAnalysisDB, ContractRewriteDB, GeminiAPILogDB
+        
+        # Create tables in dependency order (parent tables first)
+        table_creation_order = [
+            ("users", User.__table__),
+            ("contract_analyses", ContractAnalysisDB.__table__), 
+            ("contract_rewrites", ContractRewriteDB.__table__),
+            ("gemini_api_logs", GeminiAPILogDB.__table__)
+        ]
+        
+        for table_name, table_obj in table_creation_order:
+            if table_name in missing_tables:
+                try:
+                    print(f"  Creating table: {table_name}")
+                    table_obj.create(bind=engine, checkfirst=True)
+                    print(f"  ✅ Created: {table_name}")
+                except Exception as e:
+                    print(f"  ❌ Error creating {table_name}: {e}")
+                    # Continue with other tables even if one fails
+        
+        print("✅ Table creation process completed!")
         
         # Verify tables were created
         with engine.connect() as conn:
