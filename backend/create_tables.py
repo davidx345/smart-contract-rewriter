@@ -29,40 +29,108 @@ def create_tables():
                 WHERE schemaname = 'public' AND tablename != 'alembic_version'
             """))
             existing_tables = [row[0] for row in result.fetchall()]
+            print(f"🔍 Existing tables in database: {', '.join(sorted(existing_tables))}")
             
             required_tables = ['users', 'contract_analyses', 'contract_rewrites', 'gemini_api_logs']
             missing_tables = [table for table in required_tables if table not in existing_tables]
             
             if not missing_tables:
                 print("✅ All required tables already exist. Skipping creation.")
-                print(f"📋 Existing tables: {', '.join(sorted(existing_tables))}")
+                print(f"📋 Contract tables: {', '.join([t for t in existing_tables if t in required_tables])}")
                 return True
             else:
                 print(f"🔨 Missing tables: {', '.join(missing_tables)}")
                 print("Creating missing tables...")
         
-        # Import the individual table classes
-        from app.schemas.contract_db_schemas import User, ContractAnalysisDB, ContractRewriteDB, GeminiAPILogDB
-        
-        # Create tables in dependency order (parent tables first)
-        table_creation_order = [
-            ("users", User.__table__),
-            ("contract_analyses", ContractAnalysisDB.__table__), 
-            ("contract_rewrites", ContractRewriteDB.__table__),
-            ("gemini_api_logs", GeminiAPILogDB.__table__)
-        ]
-        
-        for table_name, table_obj in table_creation_order:
-            if table_name in missing_tables:
-                try:
-                    print(f"  Creating table: {table_name}")
-                    table_obj.create(bind=engine, checkfirst=True)
-                    print(f"  ✅ Created: {table_name}")
-                except Exception as e:
-                    print(f"  ❌ Error creating {table_name}: {e}")
-                    # Continue with other tables even if one fails
-        
-        print("✅ Table creation process completed!")
+        # Use raw SQL to create tables in correct order with better error handling
+        with engine.connect() as conn:
+            # Start a transaction
+            trans = conn.begin()
+            try:
+                # Create users table first (if missing)
+                if 'users' in missing_tables:
+                    print("  Creating table: users")
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            username VARCHAR UNIQUE,
+                            email VARCHAR UNIQUE,
+                            hashed_password VARCHAR,
+                            created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_id ON users (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_username ON users (username)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
+                    print("  ✅ Created: users")
+                
+                # Create contract_analyses table (if missing)
+                if 'contract_analyses' in missing_tables:
+                    print("  Creating table: contract_analyses")
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS contract_analyses (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER REFERENCES users(id),
+                            contract_name VARCHAR(255),
+                            original_code TEXT NOT NULL,
+                            analysis_report JSON NOT NULL,
+                            vulnerabilities_found JSON,
+                            gas_analysis JSON,
+                            requested_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                            completed_at TIMESTAMP WITH TIME ZONE
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_analyses_id ON contract_analyses (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_analyses_contract_name ON contract_analyses (contract_name)"))
+                    print("  ✅ Created: contract_analyses")
+                
+                # Create contract_rewrites table (if missing)
+                if 'contract_rewrites' in missing_tables:
+                    print("  Creating table: contract_rewrites")
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS contract_rewrites (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER REFERENCES users(id),
+                            analysis_id INTEGER REFERENCES contract_analyses(id),
+                            contract_name VARCHAR(255),
+                            original_code TEXT NOT NULL,
+                            rewritten_code TEXT NOT NULL,
+                            optimization_goals VARCHAR[],
+                            rewrite_summary JSON,
+                            requested_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                            completed_at TIMESTAMP WITH TIME ZONE
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_id ON contract_rewrites (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_contract_name ON contract_rewrites (contract_name)"))
+                    print("  ✅ Created: contract_rewrites")
+                
+                # Create gemini_api_logs table (if missing)
+                if 'gemini_api_logs' in missing_tables:
+                    print("  Creating table: gemini_api_logs")
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS gemini_api_logs (
+                            id SERIAL PRIMARY KEY,
+                            request_payload JSON NOT NULL,
+                            response_payload JSON,
+                            error_message TEXT,
+                            called_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                            duration_ms INTEGER,
+                            related_analysis_id INTEGER REFERENCES contract_analyses(id),
+                            related_rewrite_id INTEGER REFERENCES contract_rewrites(id)
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_gemini_api_logs_id ON gemini_api_logs (id)"))
+                    print("  ✅ Created: gemini_api_logs")
+                
+                # Commit the transaction
+                trans.commit()
+                print("✅ All tables created successfully!")
+                
+            except Exception as e:
+                trans.rollback()
+                print(f"❌ Error in transaction: {e}")
+                return False
         
         # Verify tables were created
         with engine.connect() as conn:
@@ -72,7 +140,8 @@ def create_tables():
                 ORDER BY tablename
             """))
             tables = [row[0] for row in result.fetchall()]
-            print(f"📋 Final tables: {', '.join(tables)}")
+            contract_tables = [t for t in tables if t in ['users', 'contract_analyses', 'contract_rewrites', 'gemini_api_logs']]
+            print(f"📋 Contract tables available: {', '.join(contract_tables)}")
         
         return True
         
