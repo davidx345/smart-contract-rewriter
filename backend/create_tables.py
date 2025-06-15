@@ -70,7 +70,7 @@ def create_tables():
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS contract_analyses (
                             id SERIAL PRIMARY KEY,
-                            user_id INTEGER REFERENCES users(id),
+                            user_id INTEGER,  -- Removed REFERENCES users(id)
                             contract_name VARCHAR(255),
                             original_code TEXT NOT NULL,
                             analysis_report JSON NOT NULL,
@@ -81,6 +81,7 @@ def create_tables():
                         )
                     """))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_analyses_id ON contract_analyses (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_analyses_user_id ON contract_analyses (user_id)")) # Add index for user_id
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_analyses_contract_name ON contract_analyses (contract_name)"))
                     print("  ✅ Created: contract_analyses")
                 
@@ -90,7 +91,7 @@ def create_tables():
                     conn.execute(text("""
                         CREATE TABLE IF NOT EXISTS contract_rewrites (
                             id SERIAL PRIMARY KEY,
-                            user_id INTEGER REFERENCES users(id),
+                            user_id INTEGER,  -- Removed REFERENCES users(id)
                             analysis_id INTEGER REFERENCES contract_analyses(id),
                             contract_name VARCHAR(255),
                             original_code TEXT NOT NULL,
@@ -102,6 +103,7 @@ def create_tables():
                         )
                     """))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_id ON contract_rewrites (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_user_id ON contract_rewrites (user_id)")) # Add index for user_id
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_contract_name ON contract_rewrites (contract_name)"))
                     print("  ✅ Created: contract_rewrites")
                 
