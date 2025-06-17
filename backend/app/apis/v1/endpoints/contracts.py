@@ -149,14 +149,22 @@ async def get_contract_history(
             contract_name=rewrite_db.contract_name,
             timestamp=rewrite_db.requested_at,
             success=rewrite_db.rewritten_code is not None,
-            optimization_goals=rewrite_db.optimization_goals,
-            details={
+            optimization_goals=rewrite_db.optimization_goals,            details={
                 "rewrite_summary": rewrite_db.rewrite_summary,
                 "original_code": rewrite_db.original_code,
                 "rewritten_code": rewrite_db.rewritten_code,
                 "gas_savings_percentage": gas_savings_percentage,
                 "optimization_goals": rewrite_db.optimization_goals,
-                "changes_count": len(rewrite_data.get("changes_summary", [])) if rewrite_data else 0
+                "changes_count": len(rewrite_data.get("changes_summary", [])) if rewrite_data else 0,
+                # Add rewrite_report structure for frontend compatibility
+                "rewrite_report": {
+                    "rewritten_code": rewrite_db.rewritten_code,
+                    "suggestions": rewrite_data.get("changes_summary", []) if rewrite_data else [],
+                    "gas_optimization_details": {
+                        "gas_savings_percentage": gas_savings_percentage
+                    },
+                    "security_improvements": rewrite_data.get("security_enhancements_made", []) if rewrite_data else []
+                } if rewrite_db.rewritten_code else None
             }
         ))
         
@@ -241,18 +249,19 @@ async def analyze_contract_raw(request: Request):
 async def delete_contract_history(
     contract_id: str,
     db: Session = Depends(get_db)
-) -> dict:
-    """
+) -> dict:    """
     Delete a contract from history (both analysis and rewrite records).
     """
     try:
         # Convert contract_id to integer if it's numeric, handle both analysis and rewrite
         contract_id_int = int(contract_id)
+        print(f"Attempting to delete contract with ID: {contract_id_int}")
         
         # Try to find and delete from analysis table
         analysis_deleted = False
         analysis_entry = db.query(ContractAnalysisDB).filter(ContractAnalysisDB.id == contract_id_int).first()
         if analysis_entry:
+            print(f"Found analysis entry with ID: {contract_id_int}")
             db.delete(analysis_entry)
             analysis_deleted = True
         
@@ -260,14 +269,16 @@ async def delete_contract_history(
         rewrite_deleted = False
         rewrite_entry = db.query(ContractRewriteDB).filter(ContractRewriteDB.id == contract_id_int).first()
         if rewrite_entry:
+            print(f"Found rewrite entry with ID: {contract_id_int}")
             db.delete(rewrite_entry)
             rewrite_deleted = True
         
         if not analysis_deleted and not rewrite_deleted:
+            print(f"Contract with ID {contract_id_int} not found in either table")
             raise HTTPException(status_code=404, detail="Contract not found")
         
         db.commit()
-        
+        print(f"Successfully deleted contract {contract_id_int}")
         return {
             "message": "Contract deleted successfully",
             "deleted_analysis": analysis_deleted,

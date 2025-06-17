@@ -124,10 +124,9 @@ class APIService {
     const response = await this.api.get(`/contracts/${contractId}`) // Removed /api/v1
     return response.data
   }
-
   // Delete contract from history
   async deleteContract(contractId: string): Promise<void> {
-    await this.api.delete(`/contracts/${contractId}`) // Removed /api/v1
+    await this.api.delete(`/contracts/history/${contractId}`) // Fixed: added /history
   }
 }
 

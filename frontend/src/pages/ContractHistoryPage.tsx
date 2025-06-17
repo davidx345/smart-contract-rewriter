@@ -98,7 +98,7 @@ const ContractHistoryPage: React.FC = () => {
       // Add more fields to search if needed, e.g., from contract.details
     );
   });
-    // Download functionality
+  // Download functionality
   const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
     let codeToDownload = '';
     let filename = '';
@@ -106,9 +106,18 @@ const ContractHistoryPage: React.FC = () => {
     if (type === 'original' && contract.details?.original_code) {
       codeToDownload = contract.details.original_code;
       filename = `${contract.contract_name || contract.id}_original.sol`;
-    } else if (type === 'rewritten' && contract.details?.rewritten_code) {
-      codeToDownload = contract.details.rewritten_code;
-      filename = `${contract.contract_name || contract.id}_optimized.sol`;
+    } else if (type === 'rewritten') {
+      // Try multiple possible sources for rewritten code
+      const rewrittenCode = contract.details?.rewritten_code || 
+                           contract.details?.rewrite_report?.rewritten_code ||
+                           (contract.details?.rewrite_summary && 
+                            typeof contract.details.rewrite_summary === 'object' && 
+                            (contract.details.rewrite_summary as any).rewritten_code);
+      
+      if (rewrittenCode) {
+        codeToDownload = rewrittenCode;
+        filename = `${contract.contract_name || contract.id}_optimized.sol`;
+      }
     }
     
     if (codeToDownload) {
@@ -124,6 +133,7 @@ const ContractHistoryPage: React.FC = () => {
       window.URL.revokeObjectURL(url);
       toast.success(`Downloaded ${filename}`);
     } else {
+      console.log('Available data for contract:', contract.details); // Debug log
       toast.error(`${type === 'original' ? 'Original' : 'Optimized'} code not available for download.`);
     }
   };
@@ -426,13 +436,16 @@ const ContractCard: React.FC<{
         >
           <Download className="h-4 w-4 mr-1" />
           Original
-        </Button>
-        <Button
+        </Button>        <Button
           variant="outline"
           size="sm"
           onClick={() => onDownloadContract(contract, 'rewritten')}
           className="flex-1"
-          disabled={!contract.details?.rewritten_code && !contract.details?.rewrite_report?.rewritten_code}
+          disabled={!contract.details?.rewritten_code && 
+                   !contract.details?.rewrite_report?.rewritten_code &&
+                   !(contract.details?.rewrite_summary && 
+                     typeof contract.details.rewrite_summary === 'object' && 
+                     (contract.details.rewrite_summary as any).rewritten_code)}
         >
           <Download className="h-4 w-4 mr-1" />
           Optimized
