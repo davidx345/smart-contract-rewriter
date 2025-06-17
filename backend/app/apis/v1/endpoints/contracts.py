@@ -249,7 +249,8 @@ async def analyze_contract_raw(request: Request):
 async def delete_contract_history(
     contract_id: str,
     db: Session = Depends(get_db)
-) -> dict:    """
+) -> dict:
+    """
     Delete a contract from history (both analysis and rewrite records).
     """
     try:
@@ -264,8 +265,7 @@ async def delete_contract_history(
             print(f"Found analysis entry with ID: {contract_id_int}")
             db.delete(analysis_entry)
             analysis_deleted = True
-        
-        # Try to find and delete from rewrite table
+          # Try to find and delete from rewrite table
         rewrite_deleted = False
         rewrite_entry = db.query(ContractRewriteDB).filter(ContractRewriteDB.id == contract_id_int).first()
         if rewrite_entry:
@@ -279,6 +279,7 @@ async def delete_contract_history(
         
         db.commit()
         print(f"Successfully deleted contract {contract_id_int}")
+        
         return {
             "message": "Contract deleted successfully",
             "deleted_analysis": analysis_deleted,
