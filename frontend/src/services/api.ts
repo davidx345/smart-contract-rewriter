@@ -78,16 +78,38 @@ class APIService {
   async rewriteContract(optimizationRequest: OptimizationRequest): Promise<ContractOutput> {
     const response = await this.api.post('/contracts/rewrite', optimizationRequest) // Removed /api/v1
     return response.data
-  }
-  // Get contract history
+  }  // Get contract history
   async getContractHistory(page: number = 1, limit: number = 10): Promise<ContractHistoryResponse> {
     const skip = (page - 1) * limit;
-    const response = await this.api.get('/contracts/history', { // Removed /api/v1
-      params: { skip, limit } // Use skip and limit
+    const response = await this.api.get('/contracts/history', {
+      params: { skip, limit }
     })
     
-    // The API returns an array directly, but we need to wrap it in the expected format
-    const contracts = Array.isArray(response.data) ? response.data : [];
+    // The API returns an array directly, transform it to match our interface
+    const contracts = Array.isArray(response.data) ? response.data.map((item: any) => ({
+      ...item,
+      // Ensure timestamp is in string format for frontend
+      timestamp: typeof item.timestamp === 'string' ? item.timestamp : new Date(item.timestamp).toISOString(),
+      created_at: typeof item.timestamp === 'string' ? item.timestamp : new Date(item.timestamp).toISOString(),
+      details: {
+        ...item.details,
+        // Ensure proper structure for frontend consumption
+        analysis_report: item.details?.analysis_report,
+        rewrite_report: item.details?.rewrite_summary ? {
+          suggestions: item.details.rewrite_summary?.changes_summary || [],
+          gas_optimization_details: {
+            gas_savings_percentage: item.details.gas_savings_percentage || 0
+          },
+          security_improvements: item.details.rewrite_summary?.security_enhancements_made || [],
+          rewritten_code: item.details?.rewritten_code
+        } : undefined,
+        original_code: item.details?.original_code,
+        rewritten_code: item.details?.rewritten_code,
+        vulnerabilities_count: item.details?.vulnerabilities_count || 0,
+        gas_savings_percentage: item.details?.gas_savings_percentage || 0,
+        changes_count: item.details?.changes_count || 0
+      }
+    })) : [];
     
     return {
       contracts,

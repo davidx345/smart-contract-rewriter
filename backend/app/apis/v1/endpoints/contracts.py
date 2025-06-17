@@ -108,8 +108,7 @@ async def get_contract_history(
 ) -> Any:
     """
     Get history of contract analyses and rewrites from the database.
-    """
-    # Fetch both analyses and rewrites, then combine and sort them if necessary
+    """    # Fetch both analyses and rewrites, then combine and sort them if necessary
     # This is a simplified example; you might want separate endpoints or more complex querying
     
     analyses_db = db.query(ContractAnalysisDB).order_by(ContractAnalysisDB.requested_at.desc()).offset(skip).limit(limit).all()
@@ -117,24 +116,48 @@ async def get_contract_history(
     
     history_items = []
     for analysis_db in analyses_db:
+        # Extract analysis data for better frontend display
+        analysis_data = analysis_db.analysis_report if isinstance(analysis_db.analysis_report, dict) else {}
+        vulnerabilities_count = len(analysis_data.get("vulnerabilities", [])) if analysis_data else 0        
         history_items.append(ContractHistoryResponse(
             id=str(analysis_db.id),
             type="analysis",
             contract_name=analysis_db.contract_name,
-            timestamp=analysis_db.requested_at.isoformat(),
-            success=analysis_db.analysis_report is not None, # Or a dedicated success field
-            details={"analysis_report": analysis_db.analysis_report}
+            timestamp=analysis_db.requested_at,
+            success=analysis_db.analysis_report is not None,
+            details={
+                "analysis_report": analysis_db.analysis_report,
+                "original_code": analysis_db.original_code,
+                "vulnerabilities_count": vulnerabilities_count,
+                "gas_analysis": analysis_db.gas_analysis
+            }
         ))
 
     for rewrite_db in rewrites_db:
+        # Extract rewrite data for better frontend display
+        rewrite_data = rewrite_db.rewrite_summary if isinstance(rewrite_db.rewrite_summary, dict) else {}
+        
+        # Calculate gas savings if available
+        gas_savings_percentage = 0.0
+        if rewrite_data and isinstance(rewrite_data, dict):
+            analysis_data = rewrite_data.get("analysis_of_rewritten_code", {})
+            if analysis_data:
+                gas_savings_percentage = analysis_data.get("total_gas_savings_percentage", 0.0) or 0.0        
         history_items.append(ContractHistoryResponse(
             id=str(rewrite_db.id),
             type="rewrite",
             contract_name=rewrite_db.contract_name,
-            timestamp=rewrite_db.requested_at.isoformat(),
-            success=rewrite_db.rewritten_code is not None, # Or a dedicated success field
+            timestamp=rewrite_db.requested_at,
+            success=rewrite_db.rewritten_code is not None,
             optimization_goals=rewrite_db.optimization_goals,
-            details={"rewrite_summary": rewrite_db.rewrite_summary}
+            details={
+                "rewrite_summary": rewrite_db.rewrite_summary,
+                "original_code": rewrite_db.original_code,
+                "rewritten_code": rewrite_db.rewritten_code,
+                "gas_savings_percentage": gas_savings_percentage,
+                "optimization_goals": rewrite_db.optimization_goals,
+                "changes_count": len(rewrite_data.get("changes_summary", [])) if rewrite_data else 0
+            }
         ))
         
     # Sort combined history by timestamp descending
@@ -213,3 +236,88 @@ async def analyze_contract_raw(request: Request):
     body = await request.body()
     print("/analyze/raw RAW BODY:", body)
     return {"received": body.decode()}
+
+@router.delete("/history/{contract_id}")
+async def delete_contract_history(
+    contract_id: str,
+    db: Session = Depends(get_db)
+) -> dict:
+    """
+    Delete a contract from history (both analysis and rewrite records).
+    """
+    try:
+        # Convert contract_id to integer if it's numeric, handle both analysis and rewrite
+        contract_id_int = int(contract_id)
+        
+        # Try to find and delete from analysis table
+        analysis_deleted = False
+        analysis_entry = db.query(ContractAnalysisDB).filter(ContractAnalysisDB.id == contract_id_int).first()
+        if analysis_entry:
+            db.delete(analysis_entry)
+            analysis_deleted = True
+        
+        # Try to find and delete from rewrite table
+        rewrite_deleted = False
+        rewrite_entry = db.query(ContractRewriteDB).filter(ContractRewriteDB.id == contract_id_int).first()
+        if rewrite_entry:
+            db.delete(rewrite_entry)
+            rewrite_deleted = True
+        
+        if not analysis_deleted and not rewrite_deleted:
+            raise HTTPException(status_code=404, detail="Contract not found")
+        
+        db.commit()
+        
+        return {
+            "message": "Contract deleted successfully",
+            "deleted_analysis": analysis_deleted,
+            "deleted_rewrite": rewrite_deleted
+        }
+        
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid contract ID format")
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting contract: {str(e)}")
+
+@router.get("/history/{contract_id}")
+async def get_contract_by_id(
+    contract_id: str,
+    db: Session = Depends(get_db)
+) -> ContractHistoryResponse:
+    """
+    Get a specific contract from history by ID.
+    """
+    try:
+        contract_id_int = int(contract_id)
+          # Look in analysis table first
+        analysis_entry = db.query(ContractAnalysisDB).filter(ContractAnalysisDB.id == contract_id_int).first()
+        if analysis_entry:
+            return ContractHistoryResponse(
+                id=str(analysis_entry.id),
+                type="analysis",
+                contract_name=analysis_entry.contract_name,
+                timestamp=analysis_entry.requested_at,
+                success=analysis_entry.analysis_report is not None,
+                details={"analysis_report": analysis_entry.analysis_report}
+            )
+        
+        # Look in rewrite table
+        rewrite_entry = db.query(ContractRewriteDB).filter(ContractRewriteDB.id == contract_id_int).first()
+        if rewrite_entry:
+            return ContractHistoryResponse(
+                id=str(rewrite_entry.id),
+                type="rewrite",
+                contract_name=rewrite_entry.contract_name,
+                timestamp=rewrite_entry.requested_at,
+                success=rewrite_entry.rewritten_code is not None,
+                optimization_goals=rewrite_entry.optimization_goals,
+                details={"rewrite_summary": rewrite_entry.rewrite_summary}
+            )
+        
+        raise HTTPException(status_code=404, detail="Contract not found")
+        
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid contract ID format")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving contract: {str(e)}")

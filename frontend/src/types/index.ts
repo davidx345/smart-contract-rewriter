@@ -102,9 +102,14 @@ export interface CompilationStatus {
 export interface ContractHistoryItemDetails {
   analysis_report?: AnalysisReport
   rewrite_report?: RewriteReport
-  original_code?: string; // Added for potential inclusion in history details
-  rewritten_code?: string; // Added for potential inclusion in history details
-  // Add other fields from the API's details object if necessary
+  rewrite_summary?: any // Raw rewrite summary from backend
+  original_code?: string
+  rewritten_code?: string
+  vulnerabilities_count?: number
+  gas_analysis?: any
+  gas_savings_percentage?: number
+  optimization_goals?: string[]
+  changes_count?: number
 }
 
 export interface ContractHistoryItem {

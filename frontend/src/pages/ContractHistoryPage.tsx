@@ -10,7 +10,7 @@ import AnalysisDisplay from '../components/contract/AnalysisDisplay';
 import RewriteDisplay from '../components/contract/RewriteDisplay';
 import type { ContractHistoryItem, ContractHistoryResponse, APIError, ValidationError, ContractHistoryItemDetails } from '../types';
 import { apiService } from '../services/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate } from '../lib/utils';
 
 const ContractHistoryPage: React.FC = () => {
   const [contracts, setContracts] = useState<ContractHistoryItem[]>([]);
@@ -98,18 +98,34 @@ const ContractHistoryPage: React.FC = () => {
       // Add more fields to search if needed, e.g., from contract.details
     );
   });
-  
-  // Placeholder for download functionality
+    // Download functionality
   const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
-    toast.success(`Download for ${type} contract ${contract.id} - Not yet implemented.`);
-    // Actual implementation would require fetching the full code if not already available
-    // For example:
-    // const codeToDownload = type === 'original' ? contract.details.original_code : contract.details.rewrite_report?.rewritten_code;
-    // if (codeToDownload) {
-    //   downloadFile(codeToDownload, `${contract.contract_name || contract.id}_${type}.sol`, 'text/plain');
-    // } else {
-    //   toast.error('Contract code not available for download.');
-    // }
+    let codeToDownload = '';
+    let filename = '';
+    
+    if (type === 'original' && contract.details?.original_code) {
+      codeToDownload = contract.details.original_code;
+      filename = `${contract.contract_name || contract.id}_original.sol`;
+    } else if (type === 'rewritten' && contract.details?.rewritten_code) {
+      codeToDownload = contract.details.rewritten_code;
+      filename = `${contract.contract_name || contract.id}_optimized.sol`;
+    }
+    
+    if (codeToDownload) {
+      // Create blob and download
+      const blob = new Blob([codeToDownload], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast.success(`Downloaded ${filename}`);
+    } else {
+      toast.error(`${type === 'original' ? 'Original' : 'Optimized'} code not available for download.`);
+    }
   };
 
 
@@ -289,16 +305,46 @@ const ContractCard: React.FC<{
   onDeleteContract: (contractId: string) => void;
   onDownloadContract: (contract: ContractHistoryItem, type: 'original' | 'rewritten') => void;
 }> = ({ contract, onViewDetails, onDeleteContract, onDownloadContract }) => {
-  
-  const getOptimizationSummary = (item: ContractHistoryItem) => {
-    const gasSavingsPercentage = item.details?.rewrite_report?.gas_optimization_details?.gas_savings_percentage;
-    const securityIssuesCount = item.details?.analysis_report?.vulnerabilities?.length ?? 0;
-    const optimizationsAppliedCount = item.details?.rewrite_report?.suggestions?.length ?? 0;
+    const getOptimizationSummary = (item: ContractHistoryItem) => {
+    let gasSavings = 0;
+    let securityIssues = 0;
+    let optimizations = 0;
+
+    if (item.type === 'analysis' && item.details?.analysis_report) {
+      // For analysis items, count vulnerabilities and gas analysis
+      const analysisReport = item.details.analysis_report;
+      securityIssues = analysisReport.vulnerabilities?.length || 0;
+      optimizations = analysisReport.gas_analysis_per_function?.length || 0;
+      
+      // Check if there's gas savings data in analysis
+      if (analysisReport.total_gas_savings_percentage) {
+        gasSavings = analysisReport.total_gas_savings_percentage;
+      }
+    } else if (item.type === 'rewrite' && item.details) {
+      // For rewrite items, extract from rewrite_summary or details
+      if (item.details.gas_savings_percentage) {
+        gasSavings = item.details.gas_savings_percentage;
+      }
+      
+      // Count changes as optimizations
+      optimizations = item.details.changes_count || 0;
+      
+      // If there's a rewrite_summary with analysis data
+      if (item.details.rewrite_summary && typeof item.details.rewrite_summary === 'object') {
+        const rewriteData = item.details.rewrite_summary as any;
+        if (rewriteData.analysis_of_rewritten_code?.vulnerabilities) {
+          securityIssues = rewriteData.analysis_of_rewritten_code.vulnerabilities.length;
+        }
+        if (rewriteData.analysis_of_rewritten_code?.total_gas_savings_percentage) {
+          gasSavings = rewriteData.analysis_of_rewritten_code.total_gas_savings_percentage;
+        }
+      }
+    }
 
     return {
-      gasSavings: typeof gasSavingsPercentage === 'number' ? gasSavingsPercentage : 0,
-      securityIssues: securityIssuesCount,
-      optimizations: optimizationsAppliedCount
+      gasSavings: Math.max(0, gasSavings || 0),
+      securityIssues: Math.max(0, securityIssues || 0),
+      optimizations: Math.max(0, optimizations || 0)
     };
   };
   const summary = getOptimizationSummary(contract);
