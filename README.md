@@ -1,4 +1,4 @@
-# Smart Contract Rewriter (LLMs + Web3) 🚀
+# SoliVolt (LLMs + Web3) 🚀
 
 AI-powered comprehensive system to analyze, rewrite, optimize, and enhance the security of smart contracts using Large Language Models (LLMs) and Web3 technologies.
 
@@ -40,7 +40,7 @@ AI-powered comprehensive system to analyze, rewrite, optimize, and enhance the s
 ```powershell
 # Clone and navigate to project
 git clone <your-repo>
-cd smart_contract_rewriter
+cd solivolt
 
 # Run master setup script
 .\scripts\master-setup.ps1 -Environment development -WithMonitoring
@@ -98,7 +98,7 @@ npm run dev
 Create `backend/.env`:
 ```env
 # Database
-DATABASE_URL=postgresql://postgres:password123@localhost:5432/smart_contract_rewriter
+DATABASE_URL=postgresql://postgres:password123@localhost:5432/solivolt
 
 # AI Configuration
 GEMINI_API_KEY=your_actual_gemini_api_key_here
@@ -174,10 +174,10 @@ VITE_API_BASE_URL=http://localhost:8000
 kubectl apply -f k8s/
 
 # Check deployment status
-kubectl get pods -n smart-contract-rewriter
+kubectl get pods -n solivolt
 
 # Scale services
-kubectl scale deployment backend --replicas=3 -n smart-contract-rewriter
+kubectl scale deployment backend --replicas=3 -n solivolt
 ```
 
 ### Render.com Deployment
@@ -235,7 +235,7 @@ npm test
 ## 📁 Project Structure
 
 ```
-smart_contract_rewriter/
+solivolt/
 ├── 🔧 scripts/                    # Deployment & setup scripts
 │   ├── master-setup.ps1           # Master setup script
 │   ├── health-check.ps1           # Health monitoring
@@ -364,7 +364,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 1.  **Clone the repository (if applicable):**
     ```bash
     # git clone <your-repo-url>
-    # cd smart_contract_rewriter
+    # cd solivolt
     ```
 
 2.  **Create environment files:**

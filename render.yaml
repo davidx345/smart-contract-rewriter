@@ -32,7 +32,7 @@ services:  # Backend API Service
         value: "https://smart-contract-rewriter.onrender.com"
 
       - key: APP_NAME
-        value: "Smart Contract Rewriter"
+        value: "SoliVolt"
 
       - key: APP_VERSION
         value: "1.0.0"

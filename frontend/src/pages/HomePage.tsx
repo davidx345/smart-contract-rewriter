@@ -211,10 +211,9 @@ const HomePage: React.FC<HomePageProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="text-center"
-          >
-            <h1 className="text-4xl md:text-6xl font-bold mb-6">
-              Smart Contract Rewriter
-            </h1>            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+          >            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              SoliVolt
+            </h1><p className="text-xl md:text-2xl mb-8 text-blue-100">
               AI-powered analysis, optimization, and generation for your Solidity contracts
             </p>
             <div className="flex flex-wrap justify-center gap-6 text-sm md:text-base">

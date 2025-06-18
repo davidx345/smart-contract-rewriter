@@ -7,7 +7,7 @@ pytestmark = pytest.mark.asyncio
 async def test_read_root(client: AsyncClient):
     response = await client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to the Smart Contract Rewriter API"}
+    assert response.json() == {"message": "Welcome to the SoliVolt API"}
 
 async def test_analyze_contract_success(client: AsyncClient):
     payload = {

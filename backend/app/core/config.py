@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     )
     
     # Basic Project Info
-    PROJECT_NAME: str = "Smart Contract Rewriter"
+    PROJECT_NAME: str = "SoliVolt"
     API_V1_STR: str = "/api/v1"
     VERSION: str = Field(default="1.0.0", env="APP_VERSION")
     DESCRIPTION: str = "AI-powered smart contract analysis and optimization"
@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     
     # Application Configuration
     API_BASE_URL: str = Field(default="http://localhost:8000")
-    APP_NAME: str = Field(default="Smart Contract Rewriter")
+    APP_NAME: str = Field(default="SoliVolt")
     DEBUG: bool = Field(default=False)
     LOG_LEVEL: str = Field(default="INFO")
     
