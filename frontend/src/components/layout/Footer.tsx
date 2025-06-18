@@ -12,9 +12,8 @@ const Footer: React.FC = () => {
             <p className="text-gray-400 mb-4">
               AI-powered smart contract optimization and security analysis. 
               Rewrite your Solidity contracts for better gas efficiency, security, and code quality.
-            </p>            <div className="flex items-center space-x-4">
-              <a 
-                href="www.linkedin.com/in/david-ayodele-ayo" 
+            </p>            <div className="flex items-center space-x-4">              <a 
+                href="https://www.linkedin.com/in/david-ayodele-ayo" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="hover:text-primary-400 transition-colors"

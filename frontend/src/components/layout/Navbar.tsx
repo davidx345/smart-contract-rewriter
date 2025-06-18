@@ -29,9 +29,8 @@ const Navbar: React.FC = () => {
           >
             <History className="inline-block h-5 w-5 mr-1" />
             History
-          </NavLink>          {/* Add Auth links here later */}
-          <a 
-            href="www.linkedin.com/in/david-ayodele-ayo" 
+          </NavLink>          {/* Add Auth links here later */}          <a 
+            href="https://www.linkedin.com/in/david-ayodele-ayo" 
             target="_blank" 
             rel="noopener noreferrer"
             className="hover:text-primary-400 transition-colors"
