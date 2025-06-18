@@ -21,7 +21,7 @@ pydantic-settings==2.1.0
 # AI and Blockchain (with compatible versions)
 google-generativeai==0.3.2
 web3==6.11.3
-py-solc-x==1.12.0
+py-solc-x==2.0.4
 eth-utils>=2.0.0
 eth-typing>=3.0.0
 
