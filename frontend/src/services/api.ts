@@ -11,9 +11,8 @@ import type {
 class APIService {
   private api: AxiosInstance
 
-  constructor() {
-    // Ensure VITE_API_BASE_URL is correctly used, and the fallback is to the /api/v1 path
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://smart-contract-rewriter-backend.onrender.com/api/v1';
+  constructor() {    // Railway backend URL (update with your actual Railway URL)
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://your-solivolt-backend.up.railway.app/api/v1';
     this.api = axios.create({
       baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`, // Ensure /api/v1 is present
       headers: {
@@ -63,7 +62,7 @@ class APIService {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     // Adjust health check endpoint if it's not under /api/v1
-    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://smart-contract-rewriter-backend.onrender.com';
+    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://your-solivolt-backend.up.railway.app';
     const healthApi = axios.create({ baseURL: healthBaseURL });
     const response = await healthApi.get('/health');
     return response.data;
