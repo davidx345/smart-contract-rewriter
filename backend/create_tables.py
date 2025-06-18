@@ -31,7 +31,7 @@ def create_tables():
             existing_tables = [row[0] for row in result.fetchall()]
             print(f"🔍 Existing tables in database: {', '.join(sorted(existing_tables))}")
             
-            required_tables = ['users', 'contract_analyses', 'contract_rewrites', 'gemini_api_logs']
+            required_tables = ['users', 'contract_analyses', 'contract_rewrites', 'contract_generations', 'gemini_api_logs']
             missing_tables = [table for table in required_tables if table not in existing_tables]
             
             if not missing_tables:
@@ -103,9 +103,30 @@ def create_tables():
                         )
                     """))
                     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_id ON contract_rewrites (id)"))
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_user_id ON contract_rewrites (user_id)")) # Add index for user_id
-                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_contract_name ON contract_rewrites (contract_name)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_user_id ON contract_rewrites (user_id)")) # Add index for user_id                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_rewrites_contract_name ON contract_rewrites (contract_name)"))
                     print("  ✅ Created: contract_rewrites")
+                
+                # Create contract_generations table (if missing)
+                if 'contract_generations' in missing_tables:
+                    print("  Creating table: contract_generations")
+                    conn.execute(text("""
+                        CREATE TABLE IF NOT EXISTS contract_generations (
+                            id SERIAL PRIMARY KEY,
+                            user_id INTEGER,  -- Removed REFERENCES users(id)
+                            contract_name VARCHAR(255),
+                            description TEXT NOT NULL,
+                            features VARCHAR[],
+                            generated_code TEXT NOT NULL,
+                            generation_metadata JSON,
+                            compiler_version VARCHAR(50),
+                            requested_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+                            completed_at TIMESTAMP WITH TIME ZONE
+                        )
+                    """))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_generations_id ON contract_generations (id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_generations_user_id ON contract_generations (user_id)"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_contract_generations_contract_name ON contract_generations (contract_name)"))
+                    print("  ✅ Created: contract_generations")
                 
                 # Create gemini_api_logs table (if missing)
                 if 'gemini_api_logs' in missing_tables:
@@ -142,7 +163,7 @@ def create_tables():
                 ORDER BY tablename
             """))
             tables = [row[0] for row in result.fetchall()]
-            contract_tables = [t for t in tables if t in ['users', 'contract_analyses', 'contract_rewrites', 'gemini_api_logs']]
+            contract_tables = [t for t in tables if t in ['users', 'contract_analyses', 'contract_rewrites', 'contract_generations', 'gemini_api_logs']]
             print(f"📋 Contract tables available: {', '.join(contract_tables)}")
         
         return True

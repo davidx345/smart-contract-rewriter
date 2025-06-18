@@ -13,11 +13,12 @@ class User(Base): # Optional: If you plan to add user accounts
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)
-    hashed_password = Column(String, nullable=True) # Nullable if using external auth
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    hashed_password = Column(String, nullable=True) # Nullable if using external auth    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     analyses = relationship("ContractAnalysisDB", back_populates="user")
     rewrites = relationship("ContractRewriteDB", back_populates="user")
+    generations = relationship("ContractGenerationDB", back_populates="user")
+    generations = relationship("ContractGenerationDB", back_populates="user")
 
 class ContractAnalysisDB(Base):
     __tablename__ = "contract_analyses"
@@ -64,6 +65,27 @@ class ContractRewriteDB(Base):
     # Relationships
     user = relationship("User", back_populates="rewrites")
     analysis_entry = relationship("ContractAnalysisDB", back_populates="rewrite_entries")
+
+class ContractGenerationDB(Base):
+    __tablename__ = "contract_generations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True) # Optional user link
+    
+    contract_name = Column(String(255), index=True, nullable=True)
+    description = Column(Text, nullable=False) # User's description for the contract
+    features = Column(ARRAY(String), nullable=True) # Features requested
+    generated_code = Column(Text, nullable=False) # The generated contract code
+    
+    # Store generation metadata as JSON
+    generation_metadata = Column(JSON, nullable=True) # Stores generation notes, confidence score, etc.
+    compiler_version = Column(String(50), nullable=True)
+    
+    requested_at = Column(DateTime(timezone=True), server_default=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    user = relationship("User", back_populates="generations")
 
 # Example of how you might store raw Gemini API call/response if needed for auditing or debugging
 class GeminiAPILogDB(Base):

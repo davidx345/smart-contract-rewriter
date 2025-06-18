@@ -89,6 +89,7 @@ class ContractOutput(BaseModel):
     confidence_score: Optional[float] = Field(None, ge=0, le=1, description="Confidence in the rewrite/analysis quality")
     processing_time_seconds: float = Field(..., description="Processing time in seconds")
     message: str # General message about the operation outcome (e.g., "Analysis complete", "Rewrite successful")
+    generation_notes: Optional[str] = None # Notes about contract generation (for generated contracts)
 
 # For the /history endpoint
 class ContractHistoryResponse(BaseModel):

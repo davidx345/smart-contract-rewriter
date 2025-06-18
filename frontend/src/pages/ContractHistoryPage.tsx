@@ -49,29 +49,42 @@ const ContractHistoryPage: React.FC = () => {
 
   useEffect(() => {
     loadContracts();
-  }, [loadContracts]);
-  const handleDeleteContract = async (contractId: string) => {
+  }, [loadContracts]);  const handleDeleteContract = async (contractId: string) => {
     if (!confirm('Are you sure you want to delete this contract?')) {
       return;
     }
+    
     try {
-      await apiService.deleteContract(contractId);
+      // Immediately remove from UI to prevent double-clicks
       setContracts(prevContracts => (prevContracts || []).filter(c => c.id !== contractId));
+      
+      await apiService.deleteContract(contractId);
       toast.success('Contract deleted successfully');
-      // Reload contracts if on the last page and it becomes empty
-      const remainingContracts = (contracts || []).filter(c => c.id !== contractId);
-      if (remainingContracts.length === 0 && currentPage > 1) {
-        setCurrentPage(currentPage - 1);
-      } else {
-        loadContracts(); // Reload to get correct total pages and potentially new items if pagination changes
-      }
+      
+      // Reload contracts to get fresh data from server
+      await loadContracts();
+      
     } catch (error: unknown) {
       console.error('Error deleting contract:', error);
       const apiError = error as APIError;
-      const errorMessage = typeof apiError.detail === 'string' ? apiError.detail : 
-                          Array.isArray(apiError.detail) ? (apiError.detail as ValidationError[]).map(d => d.msg).join(', ') :
-                          'Failed to delete contract';
+      let errorMessage = 'Failed to delete contract';
+      
+      if (apiError.status_code === 404) {
+        errorMessage = 'Contract not found (may have been already deleted)';
+        // Still reload to sync with server state
+        await loadContracts();
+      } else if (typeof apiError.detail === 'string') {
+        errorMessage = apiError.detail;
+      } else if (Array.isArray(apiError.detail)) {
+        errorMessage = (apiError.detail as ValidationError[]).map(d => d.msg).join(', ');
+      }
+      
       toast.error(errorMessage);
+      
+      // Restore the contract in UI if deletion actually failed
+      if (apiError.status_code !== 404) {
+        await loadContracts();
+      }
     }
   };
 
@@ -97,9 +110,8 @@ const ContractHistoryPage: React.FC = () => {
       (contract.blockchain && contract.blockchain.toLowerCase().includes(term))
       // Add more fields to search if needed, e.g., from contract.details
     );
-  });
-  // Download functionality
-  const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten') => {
+  });  // Download functionality
+  const handleDownloadContract = (contract: ContractHistoryItem, type: 'original' | 'rewritten' | 'generated') => {
     let codeToDownload = '';
     let filename = '';
     
@@ -118,6 +130,9 @@ const ContractHistoryPage: React.FC = () => {
         codeToDownload = rewrittenCode;
         filename = `${contract.contract_name || contract.id}_optimized.sol`;
       }
+    } else if (type === 'generated' && contract.details?.generated_code) {
+      codeToDownload = contract.details.generated_code;
+      filename = `${contract.contract_name || contract.id}_generated.sol`;
     }
     
     if (codeToDownload) {
@@ -134,7 +149,8 @@ const ContractHistoryPage: React.FC = () => {
       toast.success(`Downloaded ${filename}`);
     } else {
       console.log('Available data for contract:', contract.details); // Debug log
-      toast.error(`${type === 'original' ? 'Original' : 'Optimized'} code not available for download.`);
+      const typeText = type === 'original' ? 'Original' : type === 'rewritten' ? 'Optimized' : 'Generated';
+      toast.error(`${typeText} code not available for download.`);
     }
   };
 
@@ -203,8 +219,67 @@ const ContractHistoryPage: React.FC = () => {
               </div>
             )}
             
-            {!selectedContractDetails.analysis_report && !selectedContractDetails.rewrite_report && (
-                <p className="text-gray-600">No analysis or rewrite details available for this contract.</p>
+            {selectedContractDetails.generated_code && (
+              <div>
+                <h3 className="text-xl font-semibold text-gray-700 mb-3">Generated Contract</h3>
+                <div className="space-y-4">
+                  {selectedContractDetails.description && (
+                    <div className="bg-blue-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-blue-900 mb-2">Description</h4>
+                      <p className="text-blue-800">{selectedContractDetails.description}</p>
+                    </div>
+                  )}
+                  
+                  {selectedContractDetails.features && selectedContractDetails.features.length > 0 && (
+                    <div className="bg-purple-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-purple-900 mb-2">Features</h4>
+                      <ul className="list-disc list-inside text-purple-800">
+                        {selectedContractDetails.features.map((feature, index) => (
+                          <li key={index}>{feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {selectedContractDetails.generation_notes && (
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-green-900 mb-2">Generation Notes</h4>
+                      <p className="text-green-800">{selectedContractDetails.generation_notes}</p>
+                    </div>
+                  )}
+                  
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h4 className="font-medium text-gray-900 mb-2">Generated Code</h4>
+                    <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+                      <code>{selectedContractDetails.generated_code}</code>
+                    </pre>
+                  </div>
+                  
+                  {(selectedContractDetails.confidence_score || selectedContractDetails.processing_time_seconds) && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-900 mb-2">Generation Metrics</h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        {selectedContractDetails.confidence_score && (
+                          <div>
+                            <span className="font-medium">Confidence Score:</span>
+                            <span className="ml-2">{(selectedContractDetails.confidence_score * 100).toFixed(1)}%</span>
+                          </div>
+                        )}
+                        {selectedContractDetails.processing_time_seconds && (
+                          <div>
+                            <span className="font-medium">Processing Time:</span>
+                            <span className="ml-2">{selectedContractDetails.processing_time_seconds.toFixed(2)}s</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {!selectedContractDetails.analysis_report && !selectedContractDetails.rewrite_report && !selectedContractDetails.generated_code && (
+                <p className="text-gray-600">No details available for this contract.</p>
             )}
 
           </div>
@@ -313,14 +388,12 @@ const ContractCard: React.FC<{
   contract: ContractHistoryItem;
   onViewDetails: (contract: ContractHistoryItem) => void;
   onDeleteContract: (contractId: string) => void;
-  onDownloadContract: (contract: ContractHistoryItem, type: 'original' | 'rewritten') => void;
+  onDownloadContract: (contract: ContractHistoryItem, type: 'original' | 'rewritten' | 'generated') => void;
 }> = ({ contract, onViewDetails, onDeleteContract, onDownloadContract }) => {
     const getOptimizationSummary = (item: ContractHistoryItem) => {
     let gasSavings = 0;
     let securityIssues = 0;
-    let optimizations = 0;
-
-    if (item.type === 'analysis' && item.details?.analysis_report) {
+    let optimizations = 0;    if (item.type === 'analysis' && item.details?.analysis_report) {
       // For analysis items, count vulnerabilities and gas analysis
       const analysisReport = item.details.analysis_report;
       securityIssues = analysisReport.vulnerabilities?.length || 0;
@@ -349,6 +422,15 @@ const ContractCard: React.FC<{
           gasSavings = rewriteData.analysis_of_rewritten_code.total_gas_savings_percentage;
         }
       }
+    } else if (item.type === 'generation' && item.details) {
+      // For generated contracts, show confidence score as "optimization"
+      // and count features as enhancements
+      if (item.details.confidence_score) {
+        gasSavings = item.details.confidence_score * 100; // Convert to percentage
+      }
+      optimizations = item.details.features?.length || 0;
+      // Generated contracts start with 0 security issues (assumed secure)
+      securityIssues = 0;
     }
 
     return {
@@ -365,12 +447,24 @@ const ContractCard: React.FC<{
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-lg shadow-md p-5 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between"
     >
-      <div>
-        <div className="flex items-start justify-between mb-3">
+      <div>        <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0"> {/* Added min-w-0 for truncation */}
-            <h3 className="text-lg font-semibold text-gray-800 truncate" title={contract.contract_name || `Contract ID: ${contract.id}`}>
-              {contract.contract_name || `Contract #${contract.id.slice(0,8)}...`}
-            </h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-semibold text-gray-800 truncate" title={contract.contract_name || `Contract ID: ${contract.id}`}>
+                {contract.contract_name || `Contract #${contract.id.slice(0,8)}...`}
+              </h3>
+              <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                contract.type === 'analysis' ? 'bg-blue-100 text-blue-800' :
+                contract.type === 'rewrite' ? 'bg-green-100 text-green-800' :
+                contract.type === 'generation' ? 'bg-purple-100 text-purple-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {contract.type === 'analysis' ? 'Analysis' :
+                 contract.type === 'rewrite' ? 'Rewrite' :
+                 contract.type === 'generation' ? 'Generated' :
+                 contract.type}
+              </span>
+            </div>
             {contract.contract_address && (
               <p className="text-xs text-gray-500 truncate" title={contract.contract_address}>
                 Address: {contract.contract_address}
@@ -425,31 +519,46 @@ const ContractCard: React.FC<{
             </p>
           </div>
         </div>
-      </div>
-
-      <div className="flex space-x-2 mt-auto"> {/* Added mt-auto to push to bottom */}        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDownloadContract(contract, 'original')}
-          className="flex-1"
-          disabled={!contract.details?.original_code}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Original
-        </Button>        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDownloadContract(contract, 'rewritten')}
-          className="flex-1"
-          disabled={!contract.details?.rewritten_code && 
-                   !contract.details?.rewrite_report?.rewritten_code &&
-                   !(contract.details?.rewrite_summary && 
-                     typeof contract.details.rewrite_summary === 'object' && 
-                     (contract.details.rewrite_summary as any).rewritten_code)}
-        >
-          <Download className="h-4 w-4 mr-1" />
-          Optimized
-        </Button>
+      </div>      <div className="flex space-x-2 mt-auto"> {/* Added mt-auto to push to bottom */}
+        {contract.type === 'generation' ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDownloadContract(contract, 'generated')}
+            className="flex-1"
+            disabled={!contract.details?.generated_code}
+          >
+            <Download className="h-4 w-4 mr-1" />
+            Generated
+          </Button>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadContract(contract, 'original')}
+              className="flex-1"
+              disabled={!contract.details?.original_code}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Original
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onDownloadContract(contract, 'rewritten')}
+              className="flex-1"
+              disabled={!contract.details?.rewritten_code && 
+                       !contract.details?.rewrite_report?.rewritten_code &&
+                       !(contract.details?.rewrite_summary && 
+                         typeof contract.details.rewrite_summary === 'object' && 
+                         (contract.details.rewrite_summary as any).rewritten_code)}
+            >
+              <Download className="h-4 w-4 mr-1" />
+              Optimized
+            </Button>
+          </>
+        )}
       </div>
     </motion.div>
   );

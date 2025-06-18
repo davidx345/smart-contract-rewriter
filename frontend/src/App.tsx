@@ -21,7 +21,7 @@ const queryClient = new QueryClient({
 function App() {
   // Lifted state
   const [contractOutput, setContractOutput] = useState<ContractOutput | null>(null);
-  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite'>('form');
+  const [activeView, setActiveView] = useState<'form' | 'analysis' | 'rewrite' | 'generate' | 'generated'>('form');
 
   return (
     <QueryClientProvider client={queryClient}>

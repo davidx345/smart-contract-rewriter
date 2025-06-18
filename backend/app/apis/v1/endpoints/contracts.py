@@ -14,7 +14,7 @@ from app.models.contract_models import ( # Pydantic models for request/response
 from app.services.contract_processing_service import contract_service
 from app.services.metrics_service import metrics_service
 from app.db.session import get_db
-from app.schemas.contract_db_schemas import ContractAnalysisDB, ContractRewriteDB # SQLAlchemy models
+from app.schemas.contract_db_schemas import ContractAnalysisDB, ContractRewriteDB, ContractGenerationDB # SQLAlchemy models
 
 router = APIRouter()
 
@@ -107,12 +107,13 @@ async def get_contract_history(
     limit: int = 100
 ) -> Any:
     """
-    Get history of contract analyses and rewrites from the database.
-    """    # Fetch both analyses and rewrites, then combine and sort them if necessary
-    # This is a simplified example; you might want separate endpoints or more complex querying
+    Get history of contract analyses, rewrites, and generations from the database.
+    """
+    # Fetch analyses, rewrites, and generations, then combine and sort them
     
     analyses_db = db.query(ContractAnalysisDB).order_by(ContractAnalysisDB.requested_at.desc()).offset(skip).limit(limit).all()
     rewrites_db = db.query(ContractRewriteDB).order_by(ContractRewriteDB.requested_at.desc()).offset(skip).limit(limit).all()
+    generations_db = db.query(ContractGenerationDB).order_by(ContractGenerationDB.requested_at.desc()).offset(skip).limit(limit).all()
     
     history_items = []
     for analysis_db in analyses_db:
@@ -163,8 +164,30 @@ async def get_contract_history(
                     "gas_optimization_details": {
                         "gas_savings_percentage": gas_savings_percentage
                     },
-                    "security_improvements": rewrite_data.get("security_enhancements_made", []) if rewrite_data else []
-                } if rewrite_db.rewritten_code else None
+                    "security_improvements": rewrite_data.get("security_enhancements_made", []) if rewrite_data else []                } if rewrite_db.rewritten_code else None
+            }
+        ))
+    
+    # Process generated contracts
+    for generation_db in generations_db:
+        # Extract generation metadata
+        generation_metadata = generation_db.generation_metadata if isinstance(generation_db.generation_metadata, dict) else {}
+        
+        history_items.append(ContractHistoryResponse(
+            id=str(generation_db.id),
+            type="generation",
+            contract_name=generation_db.contract_name,
+            timestamp=generation_db.requested_at,
+            success=generation_db.generated_code is not None and generation_db.completed_at is not None,
+            details={
+                "generated_code": generation_db.generated_code,
+                "description": generation_db.description,
+                "features": generation_db.features,
+                "generation_metadata": generation_metadata,
+                "compiler_version": generation_db.compiler_version,
+                "confidence_score": generation_metadata.get("confidence_score", 0.0),
+                "generation_notes": generation_metadata.get("generation_notes", ""),
+                "processing_time_seconds": generation_metadata.get("processing_time_seconds", 0.0)
             }
         ))
         
@@ -239,6 +262,49 @@ def log_rewrite_to_db(
         db.rollback()
         print(f"DB Error logging rewrite for {optimization_request.contract_name}: {e}")
 
+def log_generation_to_db(
+    db: Session,
+    generation_request: dict,
+    generation_result: ContractOutput = None,
+    success: bool = False,
+    error_message: str = None
+):
+    """Log contract generation attempt and result to the database."""
+    try:
+        from app.schemas.contract_db_schemas import ContractGenerationDB
+        
+        generation_metadata = {}
+        if success and generation_result:
+            generation_metadata = {
+                "generation_notes": generation_result.generation_notes,
+                "confidence_score": generation_result.confidence_score,
+                "processing_time_seconds": generation_result.processing_time_seconds,
+                "message": generation_result.message
+            }
+        elif error_message:
+            generation_metadata = {
+                "error": error_message,
+                "generation_request": generation_request
+            }
+        
+        db_generation = ContractGenerationDB(
+            contract_name=generation_request.get("contract_name", "GeneratedContract"),
+            description=generation_request.get("description", ""),
+            features=generation_request.get("features", []),
+            generated_code=generation_result.original_code if success and generation_result else "",
+            generation_metadata=generation_metadata,
+            compiler_version=generation_request.get("compiler_version", "0.8.19"),
+            requested_at=datetime.datetime.now(datetime.timezone.utc),
+            completed_at=datetime.datetime.now(datetime.timezone.utc) if success else None
+        )
+        db.add(db_generation)
+        db.commit()
+        db.refresh(db_generation)
+        print(f"Logged generation for {generation_request.get('contract_name')} to DB. Success: {success}")
+    except Exception as e:
+        db.rollback()
+        print(f"DB Error logging generation: {e}")
+
 @router.post("/analyze/raw")
 async def analyze_contract_raw(request: Request):
     body = await request.body()
@@ -273,9 +339,17 @@ async def delete_contract_history(
             db.delete(rewrite_entry)
             rewrite_deleted = True
         
-        if not analysis_deleted and not rewrite_deleted:
-            print(f"Contract with ID {contract_id_int} not found in either table")
-            raise HTTPException(status_code=404, detail="Contract not found")
+        # Try to find and delete from generation table
+        generation_deleted = False
+        generation_entry = db.query(ContractGenerationDB).filter(ContractGenerationDB.id == contract_id_int).first()
+        if generation_entry:
+            print(f"Found generation entry with ID: {contract_id_int}")
+            db.delete(generation_entry)
+            generation_deleted = True
+        
+        if not analysis_deleted and not rewrite_deleted and not generation_deleted:
+            print(f"Contract with ID {contract_id_int} not found in any table")
+            raise HTTPException(status_code=404, detail=f"Contract with ID {contract_id_int} not found")
         
         db.commit()
         print(f"Successfully deleted contract {contract_id_int}")
@@ -283,7 +357,8 @@ async def delete_contract_history(
         return {
             "message": "Contract deleted successfully",
             "deleted_analysis": analysis_deleted,
-            "deleted_rewrite": rewrite_deleted
+            "deleted_rewrite": rewrite_deleted,
+            "deleted_generation": generation_deleted
         }
         
     except ValueError:
@@ -313,8 +388,7 @@ async def get_contract_by_id(
                 success=analysis_entry.analysis_report is not None,
                 details={"analysis_report": analysis_entry.analysis_report}
             )
-        
-        # Look in rewrite table
+          # Look in rewrite table
         rewrite_entry = db.query(ContractRewriteDB).filter(ContractRewriteDB.id == contract_id_int).first()
         if rewrite_entry:
             return ContractHistoryResponse(
@@ -327,9 +401,74 @@ async def get_contract_by_id(
                 details={"rewrite_summary": rewrite_entry.rewrite_summary}
             )
         
+        # Look in generation table
+        generation_entry = db.query(ContractGenerationDB).filter(ContractGenerationDB.id == contract_id_int).first()
+        if generation_entry:
+            return ContractHistoryResponse(
+                id=str(generation_entry.id),
+                type="generation",
+                contract_name=generation_entry.contract_name,
+                timestamp=generation_entry.requested_at,
+                success=generation_entry.generated_code is not None and generation_entry.completed_at is not None,
+                details={
+                    "generated_code": generation_entry.generated_code,
+                    "description": generation_entry.description,
+                    "features": generation_entry.features,
+                    "generation_metadata": generation_entry.generation_metadata
+                }
+            )
+        
         raise HTTPException(status_code=404, detail="Contract not found")
         
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid contract ID format")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving contract: {str(e)}")
+
+@router.post("/generate", response_model=ContractOutput)
+async def generate_contract(
+    generation_request: dict = Body(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: Session = Depends(get_db)
+) -> Any:
+    """
+    Generate a smart contract based on user description using Gemini AI.
+    """
+    try:
+        description = generation_request.get("description", "")
+        contract_name = generation_request.get("contract_name", "GeneratedContract")
+        features = generation_request.get("features", [])
+        solidity_version = generation_request.get("compiler_version", "0.8.19")
+        
+        if not description:
+            raise HTTPException(status_code=400, detail="Contract description is required")
+        
+        # Generate contract using Gemini AI
+        generation_result = await contract_service.generate_contract(
+            description=description,
+            contract_name=contract_name,
+            features=features,
+            solidity_version=solidity_version
+        )
+        
+        # Log the generation to the database in the background
+        background_tasks.add_task(
+            log_generation_to_db,
+            db=db,
+            generation_request=generation_request,
+            generation_result=generation_result,
+            success=True
+        )
+        
+        return generation_result
+        
+    except Exception as e:
+        background_tasks.add_task(
+            log_generation_to_db,
+            db=db,
+            generation_request=generation_request,
+            generation_result=None,
+            success=False,
+            error_message=str(e)
+        )
+        raise HTTPException(status_code=500, detail=f"Error generating contract: {str(e)}")

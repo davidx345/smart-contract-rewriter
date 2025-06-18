@@ -2,18 +2,20 @@ import React, { useState, useEffect } from 'react'; // Added useEffect
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ContractFormComponent from '../components/contract/ContractForm';
+import ContractGenerator from '../components/contract/ContractGenerator';
+import GeneratedContractDisplay from '../components/contract/GeneratedContractDisplay';
 import AnalysisDisplay from '../components/contract/AnalysisDisplay';
 import RewriteDisplay from '../components/contract/RewriteDisplay';
 import Spinner from '../components/ui/Spinner';
 import { apiService } from '../services/api';
-import type { ContractForm, ContractOutput, APIError, ValidationError } from '../types';
+import type { ContractForm, ContractGenerationForm, ContractOutput, APIError, ValidationError } from '../types';
 
 // Define props for HomePage
 interface HomePageProps {
   contractOutput: ContractOutput | null;
   setContractOutput: React.Dispatch<React.SetStateAction<ContractOutput | null>>;
-  activeView: 'form' | 'analysis' | 'rewrite';
-  setActiveView: React.Dispatch<React.SetStateAction<'form' | 'analysis' | 'rewrite'>>;
+  activeView: 'form' | 'analysis' | 'rewrite' | 'generate' | 'generated';
+  setActiveView: React.Dispatch<React.SetStateAction<'form' | 'analysis' | 'rewrite' | 'generate' | 'generated'>>;
 }
 
 const HomePage: React.FC<HomePageProps> = ({ 
@@ -22,7 +24,7 @@ const HomePage: React.FC<HomePageProps> = ({
   activeView, 
   setActiveView 
 }) => {
-  const [loadingAction, setLoadingAction] = useState<'analyze' | 'rewrite' | null>(null);
+  const [loadingAction, setLoadingAction] = useState<'analyze' | 'rewrite' | 'generate' | null>(null);
   const [error, setError] = useState<string | null>(null); // UI error state
 
   // Effect to synchronize local state if global state changes externally (e.g. browser back button)
@@ -149,6 +151,50 @@ const HomePage: React.FC<HomePageProps> = ({
     }
   };
 
+  const handleGenerate = async (formData: ContractGenerationForm) => {
+    setLoadingAction('generate');
+    setError(null);
+    setContractOutput(null);
+    
+    try {
+      const generationRequest = {
+        description: formData.description,
+        contract_name: formData.contract_name,
+        features: formData.features,
+        compiler_version: formData.target_solidity_version
+      };
+      
+      const result: ContractOutput = await apiService.generateContract(generationRequest);
+      setContractOutput(result);
+      
+      if (result.original_code) {
+        setActiveView('generated');
+        toast.success(result.message || 'Smart contract generated successfully!');
+      } else {
+        setError(result.message || 'Contract generation did not produce code.');
+        toast.error(result.message || 'Contract generation did not produce code.');
+      }
+    } catch (err: unknown) {
+      const apiError = err as APIError;
+      console.error('Contract generation failed:', err);
+      setContractOutput(null);
+      let errorMessage = 'Failed to generate contract';
+      if (apiError.detail) {
+        if (Array.isArray(apiError.detail)) {
+          errorMessage = apiError.detail.map((validationErr: ValidationError) => validationErr.msg || String(validationErr)).join(', ');
+        } else {
+          errorMessage = apiError.detail;
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoadingAction(null);
+    }
+  };
+
   const resetView = () => {
     setActiveView('form');
     setContractOutput(null);
@@ -168,9 +214,8 @@ const HomePage: React.FC<HomePageProps> = ({
           >
             <h1 className="text-4xl md:text-6xl font-bold mb-6">
               Smart Contract Rewriter
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100">
-              AI-powered optimization for your Solidity contracts
+            </h1>            <p className="text-xl md:text-2xl mb-8 text-blue-100">
+              AI-powered analysis, optimization, and generation for your Solidity contracts
             </p>
             <div className="flex flex-wrap justify-center gap-6 text-sm md:text-base">
               <div className="flex items-center space-x-2">
@@ -184,20 +229,72 @@ const HomePage: React.FC<HomePageProps> = ({
               <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
                 <span>Code Quality</span>
-              </div>
-              <div className="flex items-center space-x-2">
+              </div>              <div className="flex items-center space-x-2">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
                 <span>Best Practices</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
+                <span>AI Generation</span>
               </div>
             </div>
           </motion.div>
         </div>
-      </div>
-
-      {/* Main Content */}
+      </div>      {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
+        {/* Main Navigation Tabs */}
+        {activeView === 'form' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <div className="flex justify-center">
+              <div className="flex space-x-1 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setActiveView('form')}
+                  className="px-6 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
+                >
+                  Analyze & Rewrite
+                </button>
+                <button
+                  onClick={() => setActiveView('generate')}
+                  className="px-6 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  Generate Contract
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+        
+        {activeView === 'generate' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <div className="flex justify-center">
+              <div className="flex space-x-1 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setActiveView('form')}
+                  className="px-6 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  Analyze & Rewrite
+                </button>
+                <button
+                  onClick={() => setActiveView('generate')}
+                  className="px-6 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
+                >
+                  Generate Contract
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Navigation Breadcrumbs */}
-        {activeView !== 'form' && (
+        {(activeView !== 'form' && activeView !== 'generate') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -269,6 +366,23 @@ const HomePage: React.FC<HomePageProps> = ({
                 isLoading={loadingAction === 'rewrite'} // Pass specific loading state
                 error={error}
               />
+            </div>          )}
+
+          {activeView === 'generate' && (
+            <div className="max-w-4xl mx-auto">
+              <ContractGenerator 
+                onGenerate={handleGenerate}
+                isGenerating={loadingAction === 'generate'}
+              />
+            </div>
+          )}
+
+          {activeView === 'generated' && contractOutput?.original_code && (
+            <div className="max-w-7xl mx-auto">
+              <GeneratedContractDisplay
+                contractOutput={contractOutput}
+                isLoading={loadingAction === 'generate'}
+              />
             </div>
           )}
         </motion.div>
@@ -285,12 +399,14 @@ const HomePage: React.FC<HomePageProps> = ({
                 <Spinner size="lg" className="mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
                   {/* Update text based on loadingAction */}
-                  {loadingAction === 'analyze' ? 'Analyzing Contract...' : 'Rewriting Contract...'}
+                  {loadingAction === 'analyze' ? 'Analyzing Contract...' : loadingAction === 'rewrite' ? 'Rewriting Contract...' : 'Generating Contract...'}
                 </h3>
                 <p className="text-gray-600">
                   {loadingAction === 'analyze' 
                     ? 'AI is analyzing your contract for security issues and optimization opportunities.'
-                    : 'AI is rewriting your contract with optimizations and improvements.'
+                    : loadingAction === 'rewrite'
+                    ? 'AI is rewriting your contract with optimizations and improvements.'
+                    : 'AI is generating a new smart contract based on your specifications.'
                   }
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
@@ -300,10 +416,8 @@ const HomePage: React.FC<HomePageProps> = ({
             </div>
           </motion.div>
         )}
-      </div>
-
-      {/* Features Section (shown only on form view) */}
-      {activeView === 'form' && (
+      </div>      {/* Features Section (shown only on form and generate views) */}
+      {(activeView === 'form' || activeView === 'generate') && (
         <div className="bg-white py-16"> {/* Ensure this div has a className and proper structure */}
           <div className="container mx-auto px-6">
             <div className="text-center mb-12">
@@ -313,8 +427,7 @@ const HomePage: React.FC<HomePageProps> = ({
               <p className="text-gray-600 mt-2">
                 Leverage AI to enhance your smart contracts in multiple ways.
               </p>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            </div>            <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-8">
               {[
                 {
                   title: 'Gas Optimization',
@@ -339,6 +452,12 @@ const HomePage: React.FC<HomePageProps> = ({
                   description: 'Apply industry standards and proven patterns',
                   icon: '✨',
                   color: 'bg-purple-100 text-purple-600'
+                },
+                {
+                  title: 'AI Generation',
+                  description: 'Generate smart contracts from natural language descriptions',
+                  icon: '🤖',
+                  color: 'bg-indigo-100 text-indigo-600'
                 }
               ].map((feature, index) => (
                 <motion.div

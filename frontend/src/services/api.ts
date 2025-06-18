@@ -78,6 +78,15 @@ class APIService {
   async rewriteContract(optimizationRequest: OptimizationRequest): Promise<ContractOutput> {
     const response = await this.api.post('/contracts/rewrite', optimizationRequest) // Removed /api/v1
     return response.data
+  }  // Generate contract from description
+  async generateContract(generationRequest: {
+    description: string;
+    contract_name: string;
+    features?: string[];
+    compiler_version?: string;
+  }): Promise<ContractOutput> {
+    const response = await this.api.post('/contracts/generate', generationRequest)
+    return response.data
   }  // Get contract history
   async getContractHistory(page: number = 1, limit: number = 10): Promise<ContractHistoryResponse> {
     const skip = (page - 1) * limit;

@@ -208,9 +208,97 @@ class ContractProcessingService:
                 message=f"Optimization failed: {str(e)}"
             )
 
-    # _generate_diff_summary might be replaced by Gemini's diff or a proper library
-    # def _generate_diff_summary(self, changes_made: list) -> str:
-    #     ...
+    async def generate_contract(self, description: str, contract_name: str, features: list = None, solidity_version: str = "0.8.19") -> ContractOutput:
+        """Generate a smart contract from user description using Gemini AI"""
+        start_time = time.time()
+        request_id = str(uuid.uuid4())
+
+        try:            # Get generated contract from Gemini
+            generation_data = await self.gemini_service.generate_contract(
+                description, 
+                contract_name,
+                features or []
+            )
+
+            generated_code = generation_data.get("contract_code", "")
+            if not generated_code:
+                raise ValueError("No contract code was generated")
+
+            # Analyze the generated contract
+            analysis_data = await self.gemini_service.analyze_contract(
+                generated_code,
+                contract_name
+            )
+
+            # Process vulnerabilities
+            vulnerabilities = []
+            if analysis_data.get("vulnerabilities"):
+                for vuln_data in analysis_data.get("vulnerabilities", []):
+                    try:
+                        vuln_type_str = vuln_data.get("type")
+                        vuln_type = VulnerabilityType(vuln_type_str) if vuln_type_str in VulnerabilityType.__members__ else VulnerabilityType.LOGIC_ERRORS
+                        vuln = VulnerabilityInfo(
+                            type=vuln_type,
+                            severity=vuln_data.get("severity", "Medium"),
+                            line_number=vuln_data.get("line_number"),
+                            description=vuln_data.get("description", "N/A"),
+                            recommendation=vuln_data.get("recommendation", "N/A")
+                        )
+                        vulnerabilities.append(vuln)
+                    except Exception as e:
+                        print(f"Error processing vulnerability data: {vuln_data}. Error: {e}")
+                        continue
+
+            # Process gas analysis
+            gas_function_analysis_list = []
+            if analysis_data.get("gas_analysis_per_function"):
+                for gas_data in analysis_data.get("gas_analysis_per_function", []):
+                    gas_item = GasFunctionAnalysis(
+                        function_name=gas_data.get("function_name", "unknown_function"),
+                        original_gas=gas_data.get("original_gas")
+                    )
+                    gas_function_analysis_list.append(gas_item)            # Estimate deployment gas
+            compilation_success, estimated_deployment_gas = await self.web3_service.compile_and_estimate_gas(
+                generated_code, 
+                solidity_version
+            )
+
+            analysis_report = AnalysisReport(
+                vulnerabilities=vulnerabilities,
+                gas_analysis_per_function=gas_function_analysis_list,
+                overall_code_quality_score=analysis_data.get("overall_code_quality_score"),
+                overall_security_score=analysis_data.get("overall_security_score"),
+                general_suggestions=analysis_data.get("general_suggestions", []),
+                estimated_total_gas_original=estimated_deployment_gas
+            )
+
+            processing_time_seconds = time.time() - start_time
+
+            return ContractOutput(
+                request_id=request_id,
+                original_code=generated_code,  # For generated contracts, this is the generated code
+                analysis_report=analysis_report,
+                compilation_success_original=compilation_success,
+                confidence_score=generation_data.get("confidence_score", 0.8),
+                processing_time_seconds=processing_time_seconds,
+                message="Smart contract generated successfully.",
+                generation_notes=generation_data.get("generation_notes", "Contract generated from user description")
+            )
+
+        except Exception as e:
+            processing_time_seconds = time.time() - start_time
+            error_analysis_report = AnalysisReport(
+                general_suggestions=[f"Contract generation failed: {str(e)}"]
+            )
+            return ContractOutput(
+                request_id=request_id,
+                original_code="",
+                analysis_report=error_analysis_report,
+                compilation_success_original=False,
+                confidence_score=0.0,
+                processing_time_seconds=processing_time_seconds,
+                message=f"Contract generation failed: {str(e)}"
+            )
 
 # Service instances
 contract_service = ContractProcessingService()

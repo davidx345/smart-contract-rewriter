@@ -60,6 +60,23 @@ export interface ContractOutput {
   confidence_score?: number
   processing_time_seconds: number
   message: string
+  generation_notes?: string // Added for generated contracts
+}
+
+// Contract Generation Types
+export interface ContractGenerationRequest {
+  description: string
+  contract_name: string
+  features?: string[]
+  compiler_version?: string
+}
+
+export interface ContractGenerationForm {
+  description: string
+  contract_name: string
+  features: string[]
+  contract_type: 'token' | 'nft' | 'defi' | 'dao' | 'custom'
+  target_solidity_version: string
 }
 
 // Legacy types for backward compatibility (if needed)
@@ -110,11 +127,20 @@ export interface ContractHistoryItemDetails {
   gas_savings_percentage?: number
   optimization_goals?: string[]
   changes_count?: number
+  // Generation-specific fields
+  generated_code?: string
+  description?: string
+  features?: string[]
+  generation_metadata?: any
+  compiler_version?: string
+  confidence_score?: number
+  generation_notes?: string
+  processing_time_seconds?: number
 }
 
 export interface ContractHistoryItem {
   id: string
-  type: 'analysis' | 'rewrite' // From API response
+  type: 'analysis' | 'rewrite' | 'generation' // From API response - added generation
   contract_name?: string
   timestamp: string // From API response (should be created_at?)
   success?: boolean // From API response
