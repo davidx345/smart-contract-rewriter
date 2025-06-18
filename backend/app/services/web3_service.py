@@ -1,13 +1,32 @@
-from web3 import Web3
+try:
+    from web3 import Web3
+    WEB3_AVAILABLE = True
+except ImportError:
+    print("⚠️  Warning: web3 package not available. Some features may be limited.")
+    WEB3_AVAILABLE = False
+    Web3 = None
+
 import re
 import json
 import asyncio
 from typing import Optional, Dict, Tuple
-from solcx import compile_source, install_solc, set_solc_version
 from app.core.config import settings
+
+try:
+    from solcx import compile_source, install_solc, set_solc_version
+    SOLCX_AVAILABLE = True
+except ImportError:
+    print("⚠️  Warning: py-solc-x package not available. Compilation features disabled.")
+    SOLCX_AVAILABLE = False
 
 class Web3Service:
     def __init__(self):
+        if not WEB3_AVAILABLE:
+            print("⚠️  Web3Service initialized without web3 support")
+            self.w3 = None
+            self.installed_versions = set()
+            return
+            
         # Initialize Web3 connection
         self.w3 = Web3(Web3.HTTPProvider(settings.WEB3_PROVIDER_URL))
         

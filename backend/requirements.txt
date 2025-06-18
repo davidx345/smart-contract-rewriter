@@ -1,6 +1,10 @@
+# System Dependencies (must be first)
+setuptools>=68.0.0
+wheel>=0.40.0
+
 # Core FastAPI and Web Framework
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 python-jose[cryptography]==3.3.0
 
@@ -14,10 +18,12 @@ python-dotenv==1.0.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
-# AI and Blockchain
+# AI and Blockchain (with compatible versions)
 google-generativeai==0.3.2
-web3==6.12.0
-py-solc-x==2.0.2
+web3==6.11.3
+py-solc-x==1.12.0
+eth-utils>=2.0.0
+eth-typing>=3.0.0
 
 # Monitoring and Metrics
 prometheus-client==0.19.0
