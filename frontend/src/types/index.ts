@@ -1,3 +1,45 @@
+// Authentication Types
+export interface User {
+  id: number;
+  email: string;
+  full_name: string;
+  role: 'user' | 'premium' | 'enterprise' | 'admin';
+  status: 'pending' | 'active' | 'suspended' | 'inactive';
+  email_verified: boolean;
+  company?: string;
+  linkedin_profile?: string;
+  bio?: string;
+  timezone?: string;
+  created_at: string;
+  last_login?: string;
+  contracts_analyzed: number;
+  contracts_generated: number;
+  api_calls_total: number;
+  api_calls_this_month: number;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: User;
+}
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+  remember_me?: boolean;
+}
+
+export interface RegisterData {
+  email: string;
+  password: string;
+  full_name: string;
+  company?: string;
+  linkedin_profile?: string;
+}
+
 // API Response Types - Updated to match backend
 export interface VulnerabilityInfo {
   type: string

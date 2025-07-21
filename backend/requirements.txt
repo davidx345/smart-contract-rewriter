@@ -38,9 +38,40 @@ pytest==7.4.3
 pytest-asyncio==0.21.1
 black==23.11.0
 
-# Security
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
 bcrypt==4.3.0
-passlib==1.7.4
+python-multipart==0.0.6
+
+# Email & Communication
+fastapi-mail==1.4.1
+jinja2==3.1.2
+
+# Rate Limiting & Security
+slowapi==0.1.9
+python-limits==3.5.0
+
+# OAuth Integration
+authlib==1.2.1
+httpx-oauth==0.10.2
+
+# JWT & Session Management
+pyjwt==2.8.0
+redis==5.0.1
+
+# Validation & Serialization
+email-validator==2.1.0
 
 # Utilities
 PyYAML==6.0.2
+
+# Security and Compliance
+cryptography==42.0.5
+bcrypt==4.3.0
+pyopenssl==24.1.0
+python-multipart==0.0.6
+
+# Redis for caching and rate limiting
+redis==5.0.1
+hiredis==2.3.2

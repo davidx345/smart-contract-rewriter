@@ -136,6 +136,58 @@ class APIService {
   async deleteContract(contractId: string): Promise<void> {
     await this.api.delete(`/contracts/history/${contractId}`) // Fixed: added /history
   }
+
+  // Advanced AI Analysis
+  async advancedAnalysis(request: {
+    contract_code: string;
+    analysis_type?: string;
+    target_network?: string;
+    erc_standard?: string;
+    include_suggestions?: boolean;
+  }): Promise<any> {
+    const response = await this.api.post('/ai/analyze/advanced', request);
+    return response.data;
+  }
+
+  // AI Contract Generation
+  async generateAIContract(request: {
+    description: string;
+    contract_type: string;
+    features: string[];
+    security_level?: string;
+    target_network?: string;
+    include_tests?: boolean;
+    include_deployment?: boolean;
+  }): Promise<any> {
+    const response = await this.api.post('/ai/generate/contract', request);
+    return response.data;
+  }
+
+  // General API methods for flexibility
+  async post(endpoint: string, data: any): Promise<any> {
+    const response = await this.api.post(endpoint, data);
+    return response;
+  }
+
+  async get(endpoint: string, params?: any): Promise<any> {
+    const response = await this.api.get(endpoint, { params });
+    return response;
+  }
+
+  async put(endpoint: string, data: any): Promise<any> {
+    const response = await this.api.put(endpoint, data);
+    return response;
+  }
+
+  async patch(endpoint: string, data?: any): Promise<any> {
+    const response = await this.api.patch(endpoint, data);
+    return response;
+  }
+
+  async delete(endpoint: string): Promise<any> {
+    const response = await this.api.delete(endpoint);
+    return response;
+  }
 }
 
 export const apiService = new APIService()

@@ -49,6 +49,24 @@ services:
     networks:
       - smart_contract_network
 
+  # Redis for authentication sessions and caching
+  redis:
+    image: redis:7-alpine
+    container_name: smart_contract_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass "redis_password_123"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_password_123", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - smart_contract_network
+
   frontend:
     build:
       context: ./frontend
@@ -141,6 +159,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   prometheus_data:
   grafana_data:
   alertmanager_data:

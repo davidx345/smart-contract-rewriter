@@ -1,30 +1,50 @@
-# SoliVolt (LLMs + Web3) 🚀
+# SoliVolt (Enterprise Smart Contract Platform) 🚀
 
-AI-powered comprehensive system to analyze, rewrite, optimize, and enhance the security of smart contracts using Large Language Models (LLMs) and Web3 technologies.
+AI-powered enterprise platform for analyzing, rewriting, optimizing, and enhancing smart contract security using advanced LLMs and Web3 technologies. Built with comprehensive authentication, user management, and enterprise-grade security features.
 
-## 🌟 Features
+## 🌟 Key Features
 
-- **🤖 AI-Powered Analysis**: Leverage Google Gemini AI for smart contract analysis
-- **🔄 Intelligent Rewriting**: Automated contract optimization and rewriting
-- **🛡️ Security Enhancement**: Identify and fix security vulnerabilities
-- **⚡ Gas Optimization**: Reduce gas costs and improve efficiency
-- **📊 Real-time Monitoring**: Comprehensive monitoring with Grafana and Prometheus
-- **🚨 Smart Alerting**: Slack and email notifications for system health
-- **☁️ Cloud-Ready**: Deploy to Kubernetes or Render.com
-- **🔧 DevOps Pipeline**: Complete CI/CD with GitHub Actions
+### 🔐 **Enterprise Authentication & Security**
+- **JWT-based Authentication**: Secure token-based auth with refresh tokens
+- **Role-Based Access Control (RBAC)**: User, Premium, Enterprise, Admin roles
+- **OAuth Integration**: Google, GitHub, LinkedIn sign-in
+- **Account Security**: Password strength validation, account lockout, session management
+- **Audit Logging**: Comprehensive activity tracking and security monitoring
+- **Rate Limiting**: API protection with configurable rate limits
 
-## 🏗️ Architecture
+### 🤖 **AI-Powered Smart Contract Tools**
+- **Intelligent Analysis**: Leverage Google Gemini AI for deep contract analysis
+- **Automated Rewriting**: Contract optimization and enhancement
+- **Security Vulnerability Detection**: Identify and fix security issues
+- **Gas Optimization**: Reduce costs and improve efficiency
+- **Code Generation**: AI-assisted smart contract creation
+
+### 📊 **Enterprise Management**
+- **User Dashboard**: Comprehensive analytics and usage statistics
+- **Contract History**: Track all analyses and generations
+- **Team Management**: Enterprise user and role management
+- **API Analytics**: Usage tracking and performance metrics
+
+### 🚨 **Monitoring & DevOps**
+- **Real-time Monitoring**: Grafana and Prometheus integration
+- **Smart Alerting**: Slack and email notifications
+- **Health Checks**: Comprehensive system health monitoring
+- **Cloud Deployment**: Kubernetes and Render.com ready
+
+## 🏗️ Enterprise Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   React Frontend│    │  FastAPI Backend│    │  PostgreSQL DB  │
-│   (TypeScript)  │◄──►│    (Python)     │◄──►│   (Relational)  │
+│  (TypeScript +  │◄──►│  (Python +      │◄──►│  (Auth + Data)  │
+│   Auth Context) │    │   JWT/RBAC)     │    │                 │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
-         │              ┌─────────────────┐              │
-         └──────────────►│   Gemini AI     │◄─────────────┘
-                        │   (Analysis)    │
-                        └─────────────────┘
+    ┌────────────┐      ┌─────────────────┐    ┌─────────────────┐
+    │OAuth Providers│    │   Gemini AI     │    │   Redis Cache   │
+    │(Google/GitHub/│    │   (Analysis)    │    │ (Sessions/Rate  │
+    │  LinkedIn)   │    │                 │    │   Limiting)     │
+    └────────────┘      └─────────────────┘    └─────────────────┘
                                  │
                         ┌─────────────────┐
                         │   Monitoring    │
@@ -42,11 +62,11 @@ AI-powered comprehensive system to analyze, rewrite, optimize, and enhance the s
 git clone <your-repo>
 cd solivolt
 
-# Run master setup script
-.\scripts\master-setup.ps1 -Environment development -WithMonitoring
+# Run master setup script with authentication
+.\scripts\master-setup.ps1 -Environment development -WithMonitoring -WithAuth
 
 # Or for production
-.\scripts\master-setup.ps1 -Environment production
+.\scripts\master-setup.ps1 -Environment production -WithAuth
 
 # Or deploy to Render.com
 .\scripts\master-setup.ps1 -Environment render -GeminiApiKey "your_api_key"

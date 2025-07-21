@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Added useEffect
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ContractFormComponent from '../components/contract/ContractForm';
@@ -6,6 +6,8 @@ import ContractGenerator from '../components/contract/ContractGenerator';
 import GeneratedContractDisplay from '../components/contract/GeneratedContractDisplay';
 import AnalysisDisplay from '../components/contract/AnalysisDisplay';
 import RewriteDisplay from '../components/contract/RewriteDisplay';
+import { AdvancedAnalysisDisplay } from '../components/contract/AdvancedAnalysisDisplay';
+import { AIContractGenerator } from '../components/contract/AIContractGenerator';
 import Spinner from '../components/ui/Spinner';
 import { apiService } from '../services/api';
 import type { ContractForm, ContractGenerationForm, ContractOutput, APIError, ValidationError } from '../types';
@@ -14,8 +16,8 @@ import type { ContractForm, ContractGenerationForm, ContractOutput, APIError, Va
 interface HomePageProps {
   contractOutput: ContractOutput | null;
   setContractOutput: React.Dispatch<React.SetStateAction<ContractOutput | null>>;
-  activeView: 'form' | 'analysis' | 'rewrite' | 'generate' | 'generated';
-  setActiveView: React.Dispatch<React.SetStateAction<'form' | 'analysis' | 'rewrite' | 'generate' | 'generated'>>;
+  activeView: 'form' | 'analysis' | 'rewrite' | 'generate' | 'generated' | 'ai-analysis' | 'ai-generate';
+  setActiveView: React.Dispatch<React.SetStateAction<'form' | 'analysis' | 'rewrite' | 'generate' | 'generated' | 'ai-analysis' | 'ai-generate'>>;
 }
 
 const HomePage: React.FC<HomePageProps> = ({ 
@@ -242,25 +244,37 @@ const HomePage: React.FC<HomePageProps> = ({
       </div>      {/* Main Content */}
       <div className="container mx-auto px-6 py-12">
         {/* Main Navigation Tabs */}
-        {activeView === 'form' && (
+        {(activeView === 'form' || activeView === 'analysis' || activeView === 'rewrite') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="mb-8"
           >
             <div className="flex justify-center">
-              <div className="flex space-x-1 p-1 bg-gray-100 rounded-lg">
+              <div className="flex flex-wrap justify-center gap-1 p-1 bg-gray-100 rounded-lg">
                 <button
                   onClick={() => setActiveView('form')}
-                  className="px-6 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
                 >
-                  Analyze & Rewrite
+                  Basic Analysis
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-analysis')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  🤖 AI Analysis
                 </button>
                 <button
                   onClick={() => setActiveView('generate')}
-                  className="px-6 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   Generate Contract
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-generate')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  🚀 AI Generator
                 </button>
               </div>
             </div>
@@ -274,18 +288,75 @@ const HomePage: React.FC<HomePageProps> = ({
             className="mb-8"
           >
             <div className="flex justify-center">
-              <div className="flex space-x-1 p-1 bg-gray-100 rounded-lg">
+              <div className="flex flex-wrap justify-center gap-1 p-1 bg-gray-100 rounded-lg">
                 <button
                   onClick={() => setActiveView('form')}
-                  className="px-6 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
-                  Analyze & Rewrite
+                  Basic Analysis
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-analysis')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  🤖 AI Analysis
                 </button>
                 <button
                   onClick={() => setActiveView('generate')}
-                  className="px-6 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
+                  className="px-4 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
                 >
                   Generate Contract
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-generate')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  🚀 AI Generator
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {(activeView === 'ai-analysis' || activeView === 'ai-generate') && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mb-8"
+          >
+            <div className="flex justify-center">
+              <div className="flex flex-wrap justify-center gap-1 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setActiveView('form')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  Basic Analysis
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-analysis')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    activeView === 'ai-analysis' 
+                      ? 'bg-blue-600 text-white shadow-sm' 
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  🤖 AI Analysis
+                </button>
+                <button
+                  onClick={() => setActiveView('generate')}
+                  className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
+                >
+                  Generate Contract
+                </button>
+                <button
+                  onClick={() => setActiveView('ai-generate')}
+                  className={`px-4 py-2 text-sm font-medium rounded-md ${
+                    activeView === 'ai-generate' 
+                      ? 'bg-purple-600 text-white shadow-sm' 
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  🚀 AI Generator
                 </button>
               </div>
             </div>
@@ -293,7 +364,7 @@ const HomePage: React.FC<HomePageProps> = ({
         )}
 
         {/* Navigation Breadcrumbs */}
-        {(activeView !== 'form' && activeView !== 'generate') && (
+        {(activeView !== 'form' && activeView !== 'generate' && activeView !== 'ai-analysis' && activeView !== 'ai-generate') && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -384,6 +455,40 @@ const HomePage: React.FC<HomePageProps> = ({
               />
             </div>
           )}
+
+          {activeView === 'ai-analysis' && (
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-8 text-center">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  🤖 Advanced AI Analysis
+                </h2>
+                <p className="text-gray-600">
+                  Comprehensive ML-powered security analysis and optimization
+                </p>
+              </div>
+              <AdvancedAnalysisDisplay 
+                contractCode={contractOutput?.original_code || ''} 
+                onAnalysisComplete={(analysis) => {
+                  // Handle analysis completion if needed
+                  console.log('AI Analysis completed:', analysis);
+                }}
+              />
+            </div>
+          )}
+
+          {activeView === 'ai-generate' && (
+            <div className="max-w-7xl mx-auto">
+              <div className="mb-8 text-center">
+                <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                  🚀 AI Contract Generator
+                </h2>
+                <p className="text-gray-600">
+                  Generate production-ready smart contracts using advanced AI
+                </p>
+              </div>
+              <AIContractGenerator />
+            </div>
+          )}
         </motion.div>
 
         {/* Loading States - Now uses loadingAction */}
@@ -415,7 +520,9 @@ const HomePage: React.FC<HomePageProps> = ({
             </div>
           </motion.div>
         )}
-      </div>      {/* Features Section (shown only on form and generate views) */}
+      </div>
+      
+      {/* Features Section (shown only on form and generate views) */}
       {(activeView === 'form' || activeView === 'generate') && (
         <div className="bg-white py-16"> {/* Ensure this div has a className and proper structure */}
           <div className="container mx-auto px-6">
