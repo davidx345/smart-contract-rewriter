@@ -12,7 +12,7 @@ class APIService {
   private api: AxiosInstance
 
   constructor() {    // Railway backend URL (update with your actual Railway URL)
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://your-solivolt-backend.up.railway.app/api/v1';
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://solivolt-8e0565441715.herokuapp.com';
     this.api = axios.create({
       baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`, // Ensure /api/v1 is present
       headers: {
