@@ -25,6 +25,13 @@ app = FastAPI(
     description="Unified API for authentication and smart contract analysis",
     version="1.0.0"
 )
+import importlib.util
+import os
+contract_service_path = os.path.join(os.path.dirname(__file__), "contract-service", "main.py")
+spec = importlib.util.spec_from_file_location("contract_service_main", contract_service_path)
+contract_service_main = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(contract_service_main)
+app.mount("/api/v1/contracts", contract_service_main.app)
 
 # CORS configuration
 app.add_middleware(
