@@ -39,10 +39,10 @@ app.add_middleware(
     allow_origins=[
         "https://smart-contract-rewriter.vercel.app",
         "http://localhost:3000",
-        "http://localhost:5173",
+        "http://localhost:5173"
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
