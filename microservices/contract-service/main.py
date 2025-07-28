@@ -33,7 +33,7 @@ app.add_middleware(
 )
 
 # Include contract routes
-app.include_router(contracts_router, prefix="/api/v1")
+app.include_router(contracts_router)
 
 @app.get("/health")
 async def health_check():
