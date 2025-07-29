@@ -115,18 +115,13 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({
       transition={{ duration: 0.6 }}
     >
       <Card className="p-8">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="p-2 bg-purple-100 text-purple-600 rounded-lg">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              Generate Smart Contract
-            </h2>
-            <p className="text-gray-600">
-              Describe your contract and let AI generate it for you
-            </p>
-          </div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">
+            Generate Smart Contract
+          </h2>
+          <p className="text-gray-600">
+            Describe your contract and let AI generate it for you
+          </p>
         </div>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">

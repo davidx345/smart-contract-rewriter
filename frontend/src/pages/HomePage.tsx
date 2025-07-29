@@ -256,7 +256,7 @@ const HomePage: React.FC<HomePageProps> = ({
                   onClick={() => setActiveView('form')}
                   className="px-4 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
                 >
-                  Basic Analysis
+                  Smart Analysis
                 </button>
                 {/* <button
                   onClick={() => setActiveView('ai-analysis')}
@@ -562,7 +562,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 {
                   title: 'AI Generation',
                   description: 'Generate smart contracts from natural language descriptions',
-                  icon: '🤖',
+                  icon: '🧠',
                   color: 'bg-indigo-100 text-indigo-600'
                 }
               ].map((feature, index) => (
