@@ -1,12 +1,11 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, JSON, ForeignKey, ARRAY
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+from app.db.base import Base
 from sqlalchemy.sql import func
 import enum
 
 from app.models.contract_models import OptimizationGoal, VulnerabilityType # Assuming Pydantic enums can be used
 
-Base = declarative_base()
 
 
     # Removed duplicate User model to avoid users table conflict. Use the User model from auth_db_schemas.py

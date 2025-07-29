@@ -10,7 +10,7 @@ from sqlalchemy.sql import func
 from datetime import datetime, timezone
 import uuid
 
-from app.schemas.contract_db_schemas import Base
+from app.db.base import Base
 
 
 class User(Base):
@@ -240,7 +240,7 @@ class AuditLog(Base):
     request_id = Column(String(100), nullable=True)  # For request tracing
     
     # Additional data
-    metadata = Column(JSON, nullable=True)  # Action-specific data
+    meta_data = Column(JSON, nullable=True)  # Action-specific data (renamed from metadata)
     success = Column(Boolean, default=True, nullable=False)
     error_message = Column(Text, nullable=True)
     
@@ -315,7 +315,7 @@ class SecurityEvent(Base):
     
     # Event details
     description = Column(Text, nullable=False)
-    metadata = Column(JSON, nullable=True)
+    meta_data = Column(JSON, nullable=True)  # Renamed from metadata
     
     # Risk assessment
     risk_score = Column(Integer, default=0, nullable=False)  # 0-100
