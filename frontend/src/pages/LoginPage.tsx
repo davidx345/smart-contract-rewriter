@@ -151,7 +151,9 @@ export const LoginPage = () => {
                       if (!credentialResponse.credential) throw new Error('No credential returned');
                       const decoded = jwtDecode(credentialResponse.credential);
                       // Send credential to backend for verification and user creation/login
-                      const res = await fetch('/api/v1/auth/google', {
+                      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://solivolt-8e0565441715.herokuapp.com';
+                      const url = (apiBaseUrl.endsWith('/api/v1') ? apiBaseUrl : `${apiBaseUrl}/api/v1`) + '/auth/google';
+                      const res = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ credential: credentialResponse.credential, profile: decoded })
