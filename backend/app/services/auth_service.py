@@ -14,7 +14,7 @@ from fastapi import HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import redis
 import json
-from email.mime.text import MimeText
+from email.mime.text import MIMEText
 from email.mime.multipart import MimeMultipart
 import smtplib
 
