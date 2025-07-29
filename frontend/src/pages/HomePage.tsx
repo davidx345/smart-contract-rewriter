@@ -258,24 +258,24 @@ const HomePage: React.FC<HomePageProps> = ({
                 >
                   Basic Analysis
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-analysis')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   🤖 AI Analysis
-                </button>
+                </button> */}
                 <button
                   onClick={() => setActiveView('generate')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   Generate Contract
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-generate')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   🚀 AI Generator
-                </button>
+                </button> */}
               </div>
             </div>
           </motion.div>
@@ -295,24 +295,24 @@ const HomePage: React.FC<HomePageProps> = ({
                 >
                   Basic Analysis
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-analysis')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   🤖 AI Analysis
-                </button>
+                </button> */}
                 <button
                   onClick={() => setActiveView('generate')}
                   className="px-4 py-2 text-sm font-medium rounded-md bg-primary-600 text-white shadow-sm"
                 >
                   Generate Contract
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-generate')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   🚀 AI Generator
-                </button>
+                </button> */}
               </div>
             </div>
           </motion.div>
@@ -332,7 +332,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 >
                   Basic Analysis
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-analysis')}
                   className={`px-4 py-2 text-sm font-medium rounded-md ${
                     activeView === 'ai-analysis' 
@@ -341,14 +341,14 @@ const HomePage: React.FC<HomePageProps> = ({
                   }`}
                 >
                   🤖 AI Analysis
-                </button>
+                </button> */}
                 <button
                   onClick={() => setActiveView('generate')}
                   className="px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:text-gray-900 hover:bg-gray-50"
                 >
                   Generate Contract
                 </button>
-                <button
+                {/* <button
                   onClick={() => setActiveView('ai-generate')}
                   className={`px-4 py-2 text-sm font-medium rounded-md ${
                     activeView === 'ai-generate' 
@@ -357,7 +357,7 @@ const HomePage: React.FC<HomePageProps> = ({
                   }`}
                 >
                   🚀 AI Generator
-                </button>
+                </button> */}
               </div>
             </div>
           </motion.div>

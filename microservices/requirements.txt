@@ -42,4 +42,5 @@ aiofiles==23.2.1
 
 # Monitoring (optional, can be removed for basic deployment)
 prometheus-client==0.19.0
+google-auth==2.29.0
 gunicorn==21.2.0

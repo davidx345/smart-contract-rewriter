@@ -1,0 +1,2 @@
+# Install Google OAuth dependencies for Vite + React
+npm install @react-oauth/google jwt-decode

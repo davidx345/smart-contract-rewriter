@@ -1,3 +1,38 @@
+# Google OAuth endpoint
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+import os
+
+@router.post("/google", response_model=Token)
+async def google_login(
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db)
+):
+    """
+    Authenticate or register user via Google OAuth
+    """
+    try:
+        credential = payload.get("credential")
+        if not credential:
+            raise HTTPException(status_code=400, detail="Missing Google credential")
+        # Verify Google ID token
+        CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID") or os.getenv("VITE_GOOGLE_CLIENT_ID")
+        idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), CLIENT_ID)
+        email = idinfo.get("email")
+        full_name = idinfo.get("name")
+        if not email:
+            raise HTTPException(status_code=400, detail="Google account missing email")
+        # Check if user exists, else create
+        user = db.query(User).filter(User.email == email).first()
+        if not user:
+            # Create new user
+            user_data = UserRegistration(email=email, password=secrets.token_urlsafe(16), full_name=full_name)
+            user = auth_service.register_user(db, user_data, None)
+        # Issue JWT token
+        access_token = auth_service.create_access_token({"sub": user.email, "user_id": user.id})
+        return Token(access_token=access_token, token_type="bearer")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Google sign-in failed: {str(e)}")
 """
 Authentication API Endpoints
 Enterprise-grade authentication with comprehensive security features
