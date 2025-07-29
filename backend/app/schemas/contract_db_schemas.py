@@ -8,17 +8,8 @@ from app.models.contract_models import OptimizationGoal, VulnerabilityType # Ass
 
 Base = declarative_base()
 
-class User(Base): # Optional: If you plan to add user accounts
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=True)
-    hashed_password = Column(String, nullable=True) # Nullable if using external auth    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    analyses = relationship("ContractAnalysisDB", back_populates="user")
-    rewrites = relationship("ContractRewriteDB", back_populates="user")
-    generations = relationship("ContractGenerationDB", back_populates="user")
-    generations = relationship("ContractGenerationDB", back_populates="user")
+    # Removed duplicate User model to avoid users table conflict. Use the User model from auth_db_schemas.py
 
 class ContractAnalysisDB(Base):
     __tablename__ = "contract_analyses"
