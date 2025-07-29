@@ -1,12 +1,30 @@
 
-# Create router FIRST
-from fastapi import APIRouter
-router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Google OAuth endpoint
+# Import all models and dependencies first
+from typing import List, Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, BackgroundTasks
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+from datetime import datetime, timezone, timedelta
+import secrets
+import os
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
-import os
+from app.db.session import get_db
+from app.services.auth_service import auth_service
+from app.core.dependencies import (
+    get_current_user, get_admin_user, get_current_user_optional,
+    check_rate_limit
+)
+from app.schemas.auth_db_schemas import User, UserSession, AuditLog, SecurityEvent
+from app.models.auth_models import (
+    UserRegistration, UserLogin, UserResponse, Token, TokenRefresh,
+    PasswordReset, PasswordResetConfirm, EmailVerification, ChangePassword,
+    UserProfile, AuthResponse, UserStats, AuditAction, UserRole, UserStatus
+)
+
+# Create router FIRST
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/google", response_model=Token)
 async def google_login(
