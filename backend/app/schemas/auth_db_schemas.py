@@ -77,6 +77,9 @@ class User(Base):
     api_keys = relationship("ApiKey", back_populates="user", cascade="all, delete-orphan")
     audit_logs = relationship("AuditLog", back_populates="user", cascade="all, delete-orphan")
     user_sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
+    analyses = relationship("ContractAnalysisDB", back_populates="user", cascade="all, delete-orphan")
+    rewrites = relationship("ContractRewriteDB", back_populates="user", cascade="all, delete-orphan")
+    generations = relationship("ContractGenerationDB", back_populates="user", cascade="all, delete-orphan")
     
     # Indexes for performance
     __table_args__ = (
