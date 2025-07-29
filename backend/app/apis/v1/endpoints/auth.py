@@ -1,3 +1,8 @@
+
+# Create router FIRST
+from fastapi import APIRouter
+router = APIRouter(prefix="/auth", tags=["Authentication"])
+
 # Google OAuth endpoint
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -33,13 +38,14 @@ async def google_login(
         return Token(access_token=access_token, token_type="bearer")
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Google sign-in failed: {str(e)}")
+
 """
 Authentication API Endpoints
 Enterprise-grade authentication with comprehensive security features
 """
 
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, BackgroundTasks
+from fastapi import Depends, HTTPException, status, Request, Response, BackgroundTasks
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
@@ -58,8 +64,7 @@ from app.models.auth_models import (
     UserProfile, AuthResponse, UserStats, AuditAction, UserRole, UserStatus
 )
 
-# Create router
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+
 security = HTTPBearer()
 
 
