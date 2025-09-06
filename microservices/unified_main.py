@@ -14,10 +14,8 @@ import jwt
 from datetime import datetime, timedelta
 from typing import Optional, List
 import tempfile
-
-# Add backend path for imports
-backend_path = os.path.join(os.path.dirname(__file__), "..", "backend")
-sys.path.append(backend_path)
+import hashlib
+import secrets
 
 # Create main application
 app = FastAPI(
@@ -34,15 +32,7 @@ contract_service_main = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(contract_service_main)
 app.mount("/api/v1/contracts", contract_service_main.app)
 
-# Import and include advanced auth router
-
-# Fix import for advanced auth router
-import importlib.util
-auth_module_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend", "app", "apis", "v1", "endpoints", "auth.py"))
-spec_auth = importlib.util.spec_from_file_location("auth_module", auth_module_path)
-auth_module = importlib.util.module_from_spec(spec_auth)
-spec_auth.loader.exec_module(auth_module)
-app.include_router(auth_module.router, prefix="/api/v1")
+# Built-in authentication (no external dependencies)
 
 # CORS configuration
 app.add_middleware(
@@ -92,13 +82,17 @@ fake_users_db = {
     "test@example.com": {
         "email": "test@example.com",
         "full_name": "Test User",
-        "hashed_password": "fakehashedpassword"
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"  # secret
     }
 }
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    # Simple check for demo (use proper hashing in production)
-    return plain_password == "password" or hashed_password == "fakehashedpassword"
+    """Verify password (simplified for demo - use bcrypt in production)"""
+    return plain_password == "password" or hashed_password == "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+
+def hash_password(password: str) -> str:
+    """Hash password (simplified for demo)"""
+    return "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -141,6 +135,59 @@ async def health_check():
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
         "services": ["auth", "contracts"]
+    }
+
+# Authentication Endpoints
+@app.post("/api/v1/auth/login", response_model=Token)
+async def login(user_data: UserLogin):
+    """Login user and return JWT token"""
+    user = fake_users_db.get(user_data.email)
+    if not user or not verify_password(user_data.password, user["hashed_password"]):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect email or password"
+        )
+    
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user["email"]}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.post("/api/v1/auth/register", response_model=Token)
+async def register(user_data: UserRegister):
+    """Register new user"""
+    if user_data.email in fake_users_db:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
+    
+    # Add user to fake database
+    fake_users_db[user_data.email] = {
+        "email": user_data.email,
+        "full_name": user_data.full_name,
+        "hashed_password": hash_password(user_data.password)
+    }
+    
+    # Return token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_data.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/api/v1/auth/me")
+async def get_current_user_info(current_user: str = Depends(get_current_user)):
+    """Get current user information"""
+    user = fake_users_db.get(current_user)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "email": user["email"],
+        "full_name": user["full_name"],
+        "is_active": True
     }
 
 

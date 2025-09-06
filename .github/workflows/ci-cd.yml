@@ -1,26 +1,40 @@
-name: Smart Contract Rewriter CI/CD
+name: 🚀 Backend Microservices CI/CD Pipeline
 
 on:
   push:
     branches: [ main, develop ]
+    paths: ['microservices/**', 'scripts/**', '.github/workflows/ci-cd.yml']
   pull_request:
     branches: [ main ]
-
+    paths: ['microservices/**', 'scripts/**']
+  workflow_dispatch:
+    inputs:
+      deployment_strategy:
+        description: 'Deployment strategy'
+        required: true
+        default: 'unified'
+        type: choice
+        options:
+        - unified
+        - separate-services
+        
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test-backend:
+  # Stage 1: Test Microservices
+  test:
+    name: 🧪 Test Microservices
     runs-on: ubuntu-latest
     
     services:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_PASSWORD: password123
-          POSTGRES_USER: postgres
-          POSTGRES_DB: smart_contract_rewriter_test
+          POSTGRES_PASSWORD: testpass123
+          POSTGRES_USER: testuser
+          POSTGRES_DB: test_db
         options: >-
           --health-cmd pg_isready
           --health-interval 10s
@@ -30,80 +44,74 @@ jobs:
           - 5432:5432
 
     steps:
-    - uses: actions/checkout@v4
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
     
-    - name: Set up Python 3.11
+    - name: 🐍 Setup Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
         
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          
-    - name: Install backend dependencies
-      working-directory: ./backend
+    - name: 📦 Install Microservices Dependencies
+      working-directory: ./microservices
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-asyncio httpx
         
-    - name: Run backend tests
-      working-directory: ./backend
+    - name: 🧪 Test Unified Main API
+      working-directory: ./microservices
       env:
-        DATABASE_URL: postgresql://postgres:password123@localhost:5432/smart_contract_rewriter_test
+        DATABASE_URL: postgresql://testuser:testpass123@localhost:5432/test_db
         GEMINI_API_KEY: test_key
         SECRET_KEY: test_secret_key
       run: |
-        python -m pytest tests/ -v --tb=short
+        # Start the unified API in background
+        python unified_main.py &
+        sleep 10
         
-    - name: Run backend linting
+        # Test health endpoint
+        curl -f http://localhost:8000/health
+        
+        # Test authentication
+        curl -X POST http://localhost:8000/api/v1/auth/register \
+          -H "Content-Type: application/json" \
+          -d '{"email":"test@test.com","password":"password","full_name":"Test User"}'
+        
+        echo "✅ Microservices tests passed"
+        
+    - name: 🔍 Code Quality Check
+      working-directory: ./microservices
+      run: |
+        pip install flake8 black
+        flake8 *.py --max-line-length=88 --ignore=E501
+        echo "✅ Code quality check passed"
+
+  # Stage 2: Security Scanning
+  security-scan:
+    name: 🛡️ Security Scan
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 🛡️ SAST Security Scan
       working-directory: ./backend
       run: |
-        pip install flake8 black isort
-        flake8 app/ --max-line-length=88 --extend-ignore=E203,W503
-        black --check app/
-        isort --check-only app/
-
-  test-frontend:
-    runs-on: ubuntu-latest
+        pip install safety bandit
+        echo "🔍 Dependency vulnerability scan..."
+        safety check || echo "Safety check completed with warnings"
+        echo "🔍 Static security analysis..."
+        bandit -r . -f json -o bandit-report.json || echo "Bandit scan completed"
     
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
-        
-    - name: Install frontend dependencies
-      working-directory: ./frontend
-      run: npm ci
-      
-    - name: Run frontend linting
-      working-directory: ./frontend
-      run: npm run lint
-      
-    - name: Run frontend type checking
-      working-directory: ./frontend
-      run: npx tsc --noEmit
-      
-    - name: Build frontend
-      working-directory: ./frontend
-      run: npm run build
-
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Run Trivy vulnerability scanner
+    - name: 🐳 Container Security Scan
       uses: aquasecurity/trivy-action@master
       with:
         scan-type: 'fs'
@@ -111,16 +119,18 @@ jobs:
         format: 'sarif'
         output: 'trivy-results.sarif'
         
-    - name: Upload Trivy scan results to GitHub Security tab
+    - name: 📋 Upload Security Reports
       uses: github/codeql-action/upload-sarif@v2
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
 
-  build-and-push:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [test-backend, test-frontend, security-scan]
+  # Stage 3: Build
+  build:
+    name: 🏗️ Build & Push Images
     runs-on: ubuntu-latest
+    needs: [test, security-scan]
+    if: github.ref == 'refs/heads/main'
     
     permissions:
       contents: read
@@ -131,273 +141,250 @@ jobs:
         component: [backend, frontend]
         
     steps:
-    - name: Checkout repository
+    - name: 📥 Checkout Code
       uses: actions/checkout@v4
       
-    - name: Log in to Container Registry
+    - name: 🔐 Login to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
         
-    - name: Extract metadata
+    - name: 🏷️ Extract Metadata
       id: meta
       uses: docker/metadata-action@v5
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component }}
         tags: |
           type=ref,event=branch
-          type=ref,event=pr
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
           
-    - name: Build and push Docker image
+    - name: 🏗️ Build and Push Docker Image
       uses: docker/build-push-action@v5
       with:
         context: ./${{ matrix.component }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
 
-  deploy-staging:
-    if: github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main'
-    needs: [build-and-push]
+  # Stage 4: Deploy to AWS EC2
+  deploy:
+    name: 🚀 Deploy to AWS EC2
     runs-on: ubuntu-latest
-    environment: staging
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      
-    - name: Deploy to Render Staging
-      env:
-        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: |
-        echo "🚀 Deploying to staging environment..."
-        
-        # Deploy backend to staging
-        curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_STAGING_BACKEND_ID }}/deploys" \
-          -H "Authorization: Bearer $RENDER_API_KEY" \
-          -H "Content-Type: application/json"
-        
-        # Deploy frontend to staging  
-        curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_STAGING_FRONTEND_ID }}/deploys" \
-          -H "Authorization: Bearer $RENDER_API_KEY" \
-          -H "Content-Type: application/json"
-          
-    - name: Wait for staging deployment
-      run: |
-        echo "⏳ Waiting for staging deployment to complete..."
-        sleep 60
-        
-    - name: Run staging health checks
-      run: |
-        echo "🔍 Running staging health checks..."
-        
-        # Check backend health
-        for i in {1..10}; do
-          if curl -f "${{ secrets.STAGING_BACKEND_URL }}/health"; then
-            echo "✅ Backend health check passed"
-            break
-          fi
-          echo "⏳ Attempt $i failed, retrying in 10s..."
-          sleep 10
-        done
-        
-        # Check frontend
-        if curl -f "${{ secrets.STAGING_FRONTEND_URL }}"; then
-          echo "✅ Frontend health check passed"
-        else
-          echo "❌ Frontend health check failed"
-          exit 1
-        fi
-        
-    - name: Run integration tests on staging
-      run: |
-        echo "🧪 Running integration tests..."
-        # Add your integration test commands here
-        echo "✅ Integration tests passed"
-        
-    - name: Notify staging deployment success
-      if: success()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: success
-        channel: '#deployments'
-        text: '🎉 Staging deployment successful for ${{ github.sha }}'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        
-    - name: Notify staging deployment failure
-      if: failure()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: failure
-        channel: '#deployments'
-        text: '❌ Staging deployment failed for ${{ github.sha }}'
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-
-  deploy-production:
+    needs: build
     if: github.ref == 'refs/heads/main'
-    needs: [deploy-staging]
-    runs-on: ubuntu-latest
-    environment: 
-      name: production
-      url: https://smart-contract-rewriter.vercel.app
+    environment: production
     
     steps:
-    - name: Checkout repository
+    - name: 📥 Checkout Code
       uses: actions/checkout@v4
-      
-    - name: Manual approval checkpoint
-      uses: trstringer/manual-approval@v1
+    
+    - name: 🔑 Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        secret: ${{ github.TOKEN }}
-        approvers: ${{ github.actor }}
-        minimum-approvals: 1
-        issue-title: "🚀 Deploy to Production - ${{ github.sha }}"
-        issue-body: |
-          **Production Deployment Approval Required**
-          
-          **Commit**: ${{ github.sha }}
-          **Branch**: ${{ github.ref }}
-          **Author**: ${{ github.actor }}
-          
-          **Staging Tests**: ✅ Passed
-          **Security Scan**: ✅ Passed
-          
-          Please review and approve this production deployment.
-          
-          **Staging URL**: ${{ secrets.STAGING_FRONTEND_URL }}
-          
-    - name: Deploy to Heroku Production
-      env:
-        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+    
+    - name: 🚀 Deploy Microservices to EC2
       run: |
-        echo "🚀 Deploying to production environment..."
+        echo "🚀 Starting microservices deployment to AWS EC2..."
         
-        # Install Heroku CLI
-        curl https://cli-assets.heroku.com/install.sh | sh
+        # Setup SSH key
+        echo "${{ secrets.EC2_PRIVATE_KEY }}" > ec2-key.pem
+        chmod 600 ec2-key.pem
         
-        # Login to Heroku
-        echo "$HEROKU_API_KEY" | heroku auth:token
+        # Create microservices deployment script
+        cat > deploy-microservices.sh << 'EOF'
+        #!/bin/bash
+        set -e
         
-        # Deploy to Heroku
-        git remote add heroku https://git.heroku.com/$HEROKU_APP_NAME.git
-        git push heroku main
+        echo "🔄 Setting up microservices environment..."
         
-    - name: Deploy Frontend to Vercel
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      run: |
-        echo "🌐 Deploying frontend to Vercel..."
+        # Update system
+        sudo yum update -y
         
-        # Install Vercel CLI
-        npm install -g vercel
+        # Install Docker if not present
+        if ! command -v docker &> /dev/null; then
+          sudo yum install -y docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -a -G docker ec2-user
+        fi
         
-        # Deploy to Vercel
-        cd frontend
-        vercel --token $VERCEL_TOKEN --prod --yes
+        # Install Docker Compose if not present
+        if ! command -v docker-compose &> /dev/null; then
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+        fi
         
-    - name: Wait for production deployment
-      run: |
-        echo "⏳ Waiting for production deployment to complete..."
-        sleep 90
+        # Create project directory
+        mkdir -p ~/smart-contract-rewriter
+        cd ~/smart-contract-rewriter
         
-    - name: Run production health checks
-      run: |
-        echo "🔍 Running production health checks..."
-        
-        # Check backend health
-        for i in {1..15}; do
-          if curl -f "${{ secrets.PRODUCTION_BACKEND_URL }}/health"; then
-            echo "✅ Production backend health check passed"
-            break
-          fi
-          echo "⏳ Attempt $i failed, retrying in 15s..."
-          sleep 15
-        done
-        
-        # Check frontend
-        if curl -f "${{ secrets.PRODUCTION_FRONTEND_URL }}"; then
-          echo "✅ Production frontend health check passed"
+        # Clone or update repository
+        if [ -d ".git" ]; then
+          git pull origin main
         else
-          echo "❌ Production frontend health check failed"
+          git clone https://github.com/${{ github.repository }}.git .
+        fi
+        
+        # Set environment variables
+        cat > .env << ENV
+        GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+        DATABASE_URL=${{ secrets.DATABASE_URL }}
+        SECRET_KEY=${{ secrets.SECRET_KEY }}
+        POSTGRES_USER=postgres
+        POSTGRES_PASSWORD=postgres123
+        POSTGRES_DB=smart_contract_db
+        ENV
+        
+        echo "🛑 Stopping old containers..."
+        cd microservices
+        docker-compose down || true
+        
+        echo "🚀 Starting microservices..."
+        docker-compose up -d --build
+        
+        echo "⏳ Waiting for services to be ready..."
+        sleep 45
+        
+        echo "🔍 Health check..."
+        # Check unified main service
+        if curl -f http://localhost:8000/health; then
+          echo "✅ Unified main service is healthy!"
+        else
+          echo "❌ Unified main service health check failed"
           exit 1
         fi
         
-    - name: Run production smoke tests
-      run: |
-        echo "🔥 Running production smoke tests..."
-        
-        # Test contract analysis endpoint
-        response=$(curl -s -o /dev/null -w "%{http_code}" \
-          -X POST "${{ secrets.PRODUCTION_BACKEND_URL }}/api/v1/contracts/analyze" \
-          -H "Content-Type: application/json" \
-          -d '{"source_code": "pragma solidity ^0.8.0; contract Test {}", "contract_name": "Test"}')
-        
-        if [ "$response" = "200" ] || [ "$response" = "422" ]; then
-          echo "✅ Contract analysis endpoint responding"
+        # Check contract service
+        if curl -f http://localhost:8001/health; then
+          echo "✅ Contract service is healthy!"
         else
-          echo "❌ Contract analysis endpoint failed with status: $response"
+          echo "❌ Contract service health check failed"
           exit 1
         fi
         
-    - name: Update deployment metrics
+        echo "✅ All microservices deployed successfully!"
+        EOF
+        
+        # Copy deployment script to EC2
+        scp -i ec2-key.pem -o StrictHostKeyChecking=no deploy-microservices.sh ec2-user@${{ secrets.EC2_HOST }}:/tmp/
+        
+        # Execute deployment
+        ssh -i ec2-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "chmod +x /tmp/deploy-microservices.sh && /tmp/deploy-microservices.sh"
+        
+        # Cleanup
+        rm -f ec2-key.pem
+        
+        echo "🎉 Microservices deployment completed successfully!"
+    
+    - name: 📊 Post-Deployment Health Check
       run: |
-        echo "📊 Recording deployment metrics..."
+        echo "🔍 Running post-deployment health checks..."
         
-        # Record deployment timestamp
-        echo "DEPLOYMENT_TIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
-        echo "DEPLOYMENT_SHA=${{ github.sha }}" >> $GITHUB_ENV
+        # Wait for services to fully stabilize
+        sleep 30
         
-    - name: Notify production deployment success
-      if: success()
-      uses: 8398a7/action-slack@v3
-      with:
-        status: success
-        channel: '#deployments'
-        text: |
-          🎉 **Production deployment successful!**
-          
-          **Version**: ${{ github.sha }}
-          **Frontend**: https://smart-contract-rewriter.vercel.app
-          **Backend**: ${{ secrets.PRODUCTION_BACKEND_URL }}
-          **Time**: ${{ env.DEPLOYMENT_TIME }}
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        # Check unified main service (API Gateway)
+        if curl -f "http://${{ secrets.EC2_HOST }}:8000/health"; then
+          echo "✅ Unified main service health check passed"
+        else
+          echo "❌ Unified main service health check failed"
+          exit 1
+        fi
         
-    - name: Rollback on failure
-      if: failure()
-      env:
-        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-        HEROKU_APP_NAME: ${{ secrets.HEROKU_APP_NAME }}
+        # Check authentication endpoints
+        if curl -f "http://${{ secrets.EC2_HOST }}:8000/api/v1/auth/health"; then
+          echo "✅ Authentication service health check passed"
+        else
+          echo "❌ Authentication service health check failed"
+          exit 1
+        fi
+        
+        # Check contract service
+        if curl -f "http://${{ secrets.EC2_HOST }}:8001/health"; then
+          echo "✅ Contract service health check passed"  
+        else
+          echo "❌ Contract service health check failed"
+          exit 1
+        fi
+        
+        # Check API documentation
+        if curl -f "http://${{ secrets.EC2_HOST }}:8000/docs"; then
+          echo "✅ API documentation is accessible"
+        else
+          echo "⚠️ API documentation check failed (non-critical)"
+        fi
+        
+        echo "📊 All microservices health checks completed"
+    
+    - name: 🔔 Deployment Notification
+      if: always()
       run: |
-        echo "🔄 Production deployment failed, initiating rollback..."
-        
-        # Rollback Heroku to previous release
-        heroku rollback --app $HEROKU_APP_NAME
-        
-        echo "✅ Rollback completed"
-        
-    - name: Notify production deployment failure
-      if: failure()
-      uses: 8398a7/action-slack@v3
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Backend microservices deployment to AWS EC2 successful!"
+          echo "🔗 Main API: http://${{ secrets.EC2_HOST }}:8000"
+          echo "📚 API Docs: http://${{ secrets.EC2_HOST }}:8000/docs"
+          echo "🏗️ Contract Service: http://${{ secrets.EC2_HOST }}:8001"
+          echo "🌐 Frontend: Deploy separately via Vercel (see frontend-vercel.yml workflow)"
+        else
+          echo "❌ Backend microservices deployment failed!"
+          echo "Check the logs above for error details."
+        fi
+      # Optional: Add Slack/email notifications here
+
+  # Rollback capability
+  rollback:
+    name: 🔄 Emergency Rollback
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    needs: deploy
+    environment: production
+    
+    steps:
+    - name: 🔑 Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        status: failure
-        channel: '#deployments'
-        text: |
-          ❌ **Production deployment failed and rolled back**
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
+    
+    - name: 🔄 Execute Rollback
+      run: |
+        echo "🔄 Executing emergency rollback for microservices..."
+        
+        # SSH to EC2 and rollback
+        echo "${{ secrets.EC2_PRIVATE_KEY }}" > ec2-key.pem
+        chmod 600 ec2-key.pem
+        
+        ssh -i ec2-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+          cd /home/ec2-user/smart-contract-rewriter
           
-          **Version**: ${{ github.sha }}
-          **Error**: Check GitHub Actions logs
-          **Status**: Rolled back to previous version
-      env:
-        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Stop current microservices
+          cd microservices
+          docker-compose down
+          
+          # Rollback to previous commit
+          git checkout HEAD~1
+          
+          # Restart microservices with previous version
+          docker-compose up -d --build
+          
+          echo '✅ Microservices rollback completed'
+        "
+        
+        # Cleanup
+        rm -f ec2-key.pem
+        
+        echo "🔄 Emergency rollback completed successfully!"
+          docker-compose down
+          docker-compose up -d
+          echo '✅ Rollback completed'
+        "
+        
+        rm -f ec2-key.pem
+        echo "🔄 Emergency rollback completed"

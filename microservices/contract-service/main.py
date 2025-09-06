@@ -5,14 +5,24 @@ Handles smart contract analysis, storage, and retrieval
 
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 import sys
 import os
+import json
+from datetime import datetime
 
-# Add the main backend to path to reuse components
-backend_path = os.path.join(os.path.dirname(__file__), '..', '..', 'backend')
-sys.path.append(backend_path)
+# Contract Models
+class ContractAnalyzeRequest(BaseModel):
+    contract_code: str
+    contract_name: Optional[str] = None
 
-from app.apis.v1.endpoints.contracts import router as contracts_router
+class ContractAnalysisResult(BaseModel):
+    contract_name: str
+    security_score: int
+    issues: List[dict]
+    suggestions: List[str]
+    analyzed_at: str
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -36,8 +46,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include contract routes
-app.include_router(contracts_router)
+# Contract Analysis Endpoints
+@app.post("/analyze", response_model=ContractAnalysisResult)
+async def analyze_contract(request: ContractAnalyzeRequest):
+    """Analyze smart contract for security issues"""
+    try:
+        # Simulate analysis (replace with actual AI analysis)
+        analysis = {
+            "contract_name": request.contract_name or "Unknown",
+            "security_score": 85,
+            "issues": [
+                {
+                    "severity": "medium",
+                    "type": "reentrancy",
+                    "line": 45,
+                    "description": "Potential reentrancy vulnerability"
+                }
+            ],
+            "suggestions": [
+                "Add reentrancy guard",
+                "Optimize gas usage"
+            ],
+            "analyzed_at": datetime.utcnow().isoformat()
+        }
+        return analysis
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 @app.get("/health")
 async def health_check():
