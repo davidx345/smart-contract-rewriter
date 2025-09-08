@@ -1,0 +1,9 @@
+{
+  "instance_id": "i-094945951ee1c0a0d",
+  "public_ip": "3.87.248.104",
+  "public_dns": "ec2-3-87-248-104.compute-1.amazonaws.com",
+  "key_pair": "solivolt-key-pair",
+  "security_group": "sg-008821d923bae4136",
+  "region": "us-east-1",
+  "created_at": "2025-09-08T00:45:00.461101"
+}
