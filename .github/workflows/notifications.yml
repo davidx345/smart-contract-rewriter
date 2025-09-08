@@ -1,0 +1,149 @@
+# 🔔 Notification Configuration Template
+
+name: 📢 Smart Contract CI/CD Notifications
+
+on:
+  workflow_run:
+    workflows: ["🚀 Backend Microservices CI/CD Pipeline"]
+    types: [completed, requested]
+
+jobs:
+  notify-slack:
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+    - name: 📢 Send Slack Notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ github.event.workflow_run.conclusion }}
+        channel: '#deployments'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        fields: repo,message,commit,author,action,eventName,ref,workflow
+        custom_payload: |
+          {
+            "attachments": [
+              {
+                "color": "${{ github.event.workflow_run.conclusion == 'success' && 'good' || github.event.workflow_run.conclusion == 'failure' && 'danger' || 'warning' }}",
+                "title": "🚀 Smart Contract Rewriter Deployment",
+                "fields": [
+                  {
+                    "title": "Status",
+                    "value": "${{ github.event.workflow_run.conclusion }}",
+                    "short": true
+                  },
+                  {
+                    "title": "Environment",
+                    "value": "AWS EC2 Production",
+                    "short": true
+                  },
+                  {
+                    "title": "Commit",
+                    "value": "${{ github.event.workflow_run.head_commit.message }}",
+                    "short": false
+                  },
+                  {
+                    "title": "Services",
+                    "value": "• unified-main: http://3.87.248.104:8000\n• contract-service: http://3.87.248.104:8001",
+                    "short": false
+                  }
+                ],
+                "footer": "Smart Contract CI/CD",
+                "ts": "${{ github.event.workflow_run.updated_at }}"
+              }
+            ]
+          }
+
+  notify-email:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'failure'
+    steps:
+    - name: 📧 Send Email Alert
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 587
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: |
+          🚨 URGENT: Smart Contract Deployment Failed (${{ github.event.workflow_run.head_sha }})
+        to: ${{ secrets.NOTIFICATION_EMAIL }}
+        from: Smart Contract CI/CD <${{ secrets.EMAIL_USERNAME }}>
+        html_body: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 20px; }
+                  .header { background-color: #dc3545; color: white; padding: 20px; border-radius: 5px; }
+                  .content { background-color: #f8f9fa; padding: 20px; margin: 10px 0; border-radius: 5px; }
+                  .footer { margin-top: 30px; font-size: 12px; color: #6c757d; }
+                  .error { color: #dc3545; font-weight: bold; }
+              </style>
+          </head>
+          <body>
+              <div class="header">
+                  <h2>🚨 DEPLOYMENT FAILURE ALERT</h2>
+                  <p><strong>Smart Contract Rewriter - Production Deployment Failed</strong></p>
+              </div>
+
+              <div class="content">
+                  <h3>📊 Failure Details</h3>
+                  <ul>
+                      <li><strong>Repository:</strong> ${{ github.event.workflow_run.repository.full_name }}</li>
+                      <li><strong>Branch:</strong> ${{ github.event.workflow_run.head_branch }}</li>
+                      <li><strong>Commit:</strong> ${{ github.event.workflow_run.head_sha }}</li>
+                      <li><strong>Author:</strong> ${{ github.event.workflow_run.head_commit.author.name }}</li>
+                      <li><strong>Time:</strong> ${{ github.event.workflow_run.updated_at }}</li>
+                  </ul>
+              </div>
+
+              <div class="content">
+                  <h3>🔧 Immediate Actions Required</h3>
+                  <ol>
+                      <li>Check the <a href="${{ github.event.workflow_run.html_url }}">GitHub Actions logs</a></li>
+                      <li>Verify AWS EC2 instance status</li>
+                      <li>Test service health: <a href="http://3.87.248.104:8000/health">Health Check</a></li>
+                      <li>Consider manual rollback if needed</li>
+                  </ol>
+              </div>
+
+              <div class="footer">
+                  <p>This is an automated alert from Smart Contract CI/CD Pipeline</p>
+                  <p>Pipeline URL: <a href="${{ github.event.workflow_run.html_url }}">${{ github.event.workflow_run.html_url }}</a></p>
+              </div>
+          </body>
+          </html>
+
+  notify-success:
+    runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
+    steps:
+    - name: 🎉 Send Success Notification
+      uses: 8398a7/action-slack@v3
+      with:
+        status: success
+        channel: '#general'
+        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+        custom_payload: |
+          {
+            "text": "🎉 Deployment Success!",
+            "attachments": [
+              {
+                "color": "good",
+                "title": "✅ Smart Contract Rewriter Successfully Deployed!",
+                "fields": [
+                  {
+                    "title": "🚀 Live Services",
+                    "value": "• API Gateway: http://3.87.248.104:8000\n• Contract Service: http://3.87.248.104:8001\n• API Docs: http://3.87.248.104:8000/docs",
+                    "short": false
+                  },
+                  {
+                    "title": "📊 Deployment Info",
+                    "value": "Commit: ${{ github.event.workflow_run.head_sha }}\nAuthor: ${{ github.event.workflow_run.head_commit.author.name }}",
+                    "short": false
+                  }
+                ],
+                "footer": "All systems operational! 🚀"
+              }
+            ]
+          }

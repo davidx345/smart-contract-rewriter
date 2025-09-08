@@ -1,0 +1,33 @@
+# Production Environment Requirements (Python 3.11 Compatible)
+# This file is specifically tested and validated for Python 3.11.x
+# DO NOT change versions without testing compatibility
+
+# Core Framework
+fastapi==0.104.1        # Stable version with Python 3.11 support
+uvicorn[standard]==0.24.0  # Production-grade ASGI server
+
+# Database
+SQLAlchemy==2.0.23      # Latest stable with Python 3.11
+psycopg2-binary==2.9.7  # Pre-compiled wheels available for Python 3.11
+alembic==1.12.1         # Database migrations
+
+# Data Validation & Serialization  
+pydantic==2.4.2         # Compatible with FastAPI 0.104.1
+pydantic-settings==2.0.3  # Settings management
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0  # JWT handling
+passlib[bcrypt]==1.7.4             # Password hashing
+python-multipart==0.0.6            # Form data parsing
+
+# AI Integration
+google-generativeai==0.3.2  # Stable Gemini API client for Python 3.11
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+
+# Utilities
+python-dotenv==1.0.0
+typing-extensions==4.8.0   # Backport features for Python 3.11
