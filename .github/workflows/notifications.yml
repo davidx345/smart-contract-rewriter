@@ -13,14 +13,11 @@ jobs:
     if: always()
     steps:
     - name: 📢 Send Slack Notification
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v1.24.0
       with:
-        status: ${{ github.event.workflow_run.conclusion }}
-        channel: '#deployments'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        fields: repo,message,commit,author,action,eventName,ref,workflow
-        custom_payload: |
+        payload: |
           {
+            "text": "Smart Contract Deployment Status: ${{ github.event.workflow_run.conclusion }}",
             "attachments": [
               {
                 "color": "${{ github.event.workflow_run.conclusion == 'success' && 'good' || github.event.workflow_run.conclusion == 'failure' && 'danger' || 'warning' }}",
@@ -47,11 +44,12 @@ jobs:
                     "short": false
                   }
                 ],
-                "footer": "Smart Contract CI/CD",
-                "ts": "${{ github.event.workflow_run.updated_at }}"
+                "footer": "Smart Contract CI/CD"
               }
             ]
           }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   notify-email:
     runs-on: ubuntu-latest
@@ -119,12 +117,9 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     steps:
     - name: 🎉 Send Success Notification
-      uses: 8398a7/action-slack@v3
+      uses: slackapi/slack-github-action@v1.24.0
       with:
-        status: success
-        channel: '#general'
-        webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
-        custom_payload: |
+        payload: |
           {
             "text": "🎉 Deployment Success!",
             "attachments": [
@@ -147,3 +142,5 @@ jobs:
               }
             ]
           }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

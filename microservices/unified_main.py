@@ -1,6 +1,8 @@
 """
 Unified Smart Contract Rewriter API
 Combines authentication and contract analysis in a single FastAPI app
+
+🔔 Notification Test: Testing CI/CD pipeline notification system
 """
 
 import os
