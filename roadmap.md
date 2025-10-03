@@ -97,18 +97,18 @@
 
 ---
 
- Phase 5 – Infrastructure as Code (IaC) [3-4 weeks]
+ Phase 5 – Infrastructure as Code (IaC) ✅ COMPLETED [3-4 weeks]
  Learning Goals
  Terraform infrastructure provisioning, state management
  GitOps for infrastructure changes
  Platform: AWS Free Tier with Terraform
 
  Assessment Criteria & Deliverables
-- [ ] Terraform modules for reusable infrastructure components
-- [ ] Remote state in S3 with DynamoDB locking
-- [ ] Infrastructure versioning and change management
-- [ ] Cost estimation and resource tagging strategy
-- [ ] Infrastructure security scanning (tfsec, Checkov)
+- [x] Terraform modules for reusable infrastructure components
+- [x] Remote state in S3 with DynamoDB locking
+- [x] Infrastructure versioning and change management
+- [x] Cost estimation and resource tagging strategy
+- [x] Infrastructure security scanning (tfsec, Checkov)
 
  Security Focus
  IaC Security: Terraform state security, resource-level permissions, security baselines

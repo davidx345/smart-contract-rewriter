@@ -205,6 +205,13 @@ logs/
 .terraform.lock.hcl
 terraform.tfvars
 terraform.tfvars.json
+*.tfplan
+terraform-*.tfplan
+
+# Terraform security and cost reports
+security-report.json
+checkov-report.json
+cost-estimate.json
 
 # AWS S3 Policies and Infrastructure Configs
 s3-bucket-policy.json
@@ -216,7 +223,6 @@ s3-lifecycle-policy.json
 vercel.json
 render.yaml
 infrastructure/
-terraform/
 
 # Kubernetes
 kubeconfig
