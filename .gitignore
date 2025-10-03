@@ -26,12 +26,25 @@ credentials
 config
 *.credentials
 
+# SSH Keys and Certificate Files
+solivolt-key-pair.pem
+*.pem
+id_rsa*
+id_ed25519*
+id_ecdsa*
+
+# AWS/Cloud Instance Information
+ec2-instance-info.json
+instance-info.json
+*-instance-info.json
+
 # Database dumps & backups
 *.sql
 *.dump
 *.backup
 backup/
 dumps/
+init.sql
 
 # ==================================
 # 🐍 PYTHON
@@ -193,6 +206,18 @@ logs/
 terraform.tfvars
 terraform.tfvars.json
 
+# AWS S3 Policies and Infrastructure Configs
+s3-bucket-policy.json
+s3-lifecycle-policy.json
+*-bucket-policy.json
+*-lifecycle-policy.json
+
+# Deployment and Infrastructure Files
+vercel.json
+render.yaml
+infrastructure/
+terraform/
+
 # Kubernetes
 kubeconfig
 *.kubeconfig
@@ -207,3 +232,24 @@ alertmanager-data/
 # Grafana
 grafana-data/
 grafana.db
+
+# ==================================
+# 📋 PROJECT-SPECIFIC FILES
+# ==================================
+# Security documentation with sensitive examples
+SECURITY.md
+security-config.md
+
+# Project planning and roadmaps (may contain sensitive timelines)
+roadmap.md
+project-timeline.md
+
+# Documentation with screenshots that may contain sensitive data
+screenshot-guide.md
+**/screenshots/
+**/demo-images/
+
+# Build and deployment artifacts
+build/
+dist/
+*.build
