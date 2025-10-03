@@ -1,5 +1,0 @@
-# AWS EC2 Deployment Dependencies
-boto3==1.34.0
-paramiko==3.4.0
-requests==2.32.3
-python-dotenv==1.0.0

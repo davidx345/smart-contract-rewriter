@@ -1,6 +1,13 @@
-# SoliVolt (Enterprise Smart Contract Platform) 🚀
+# 🔗 Smart Contract Rewriter & Analyzer Platform
 
-AI-powered enterprise platform for analyzing, rewriting, optimizing, and enhancing smart contract security using advanced LLMs and Web3 technologies. Built with comprehensive authentication, user management, and enterprise-grade security features.
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://typescriptlang.org)
+[![AWS](https://img.shields.io/badge/AWS-Cloud%20Infrastructure-orange.svg)](https://aws.amazon.com)
+[![Docker](https://img.shields.io/badge/Docker-Containerized-blue.svg)](https://docker.com)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Orchestrated-326CE5.svg)](https://kubernetes.io)
+
+> **🚀 An enterprise-grade, AI-powered platform for smart contract analysis, optimization, and rewriting with comprehensive DevOps automation**
 
 ## 🌟 Key Features
 
@@ -52,6 +59,13 @@ AI-powered enterprise platform for analyzing, rewriting, optimizing, and enhanci
                         │   Grafana)      │
                         └─────────────────┘
 ```
+
+### **📐 Detailed Architecture Documentation**
+- 🎨 [**Visual Architecture Diagrams**](docs/visual-architecture.md) - Interactive Mermaid diagrams
+- 🖥️ [**ASCII Architecture**](docs/ascii-architecture.md) - Terminal-friendly text diagrams  
+- 📘 [**System Architecture Guide**](docs/architecture.md) - Comprehensive technical documentation
+- 🔐 [**Security Architecture**](docs/security.md) - Zero-trust security implementation
+- 🛠️ [**Skills Matrix**](docs/skills-matrix.md) - Technical expertise showcase
 
 ## 🚀 Quick Start
 
