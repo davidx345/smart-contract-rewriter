@@ -1,0 +1,181 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init
+  namespace: smart-contract-rewriter
+  labels:
+    app.kubernetes.io/name: smart-contract-rewriter
+    app.kubernetes.io/component: database
+data:
+  init.sql: |
+    -- Smart Contract Rewriter Database Schema
+    
+    -- Enable extensions
+    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+    CREATE EXTENSION IF NOT EXISTS "pg_trgm";
+    
+    -- Create contracts table
+    CREATE TABLE IF NOT EXISTS contracts (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        name VARCHAR(255) NOT NULL,
+        original_code TEXT NOT NULL,
+        language VARCHAR(50) NOT NULL DEFAULT 'solidity',
+        file_hash VARCHAR(64) UNIQUE NOT NULL,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        user_id VARCHAR(255),
+        metadata JSONB DEFAULT '{}'::jsonb
+    );
+    
+    -- Create analyses table
+    CREATE TABLE IF NOT EXISTS analyses (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        contract_id UUID NOT NULL REFERENCES contracts(id) ON DELETE CASCADE,
+        analysis_type VARCHAR(50) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending',
+        results JSONB DEFAULT '{}'::jsonb,
+        vulnerability_count INTEGER DEFAULT 0,
+        gas_optimization_count INTEGER DEFAULT 0,
+        suggestions JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        completed_at TIMESTAMP WITH TIME ZONE,
+        error_message TEXT
+    );
+    
+    -- Create rewrites table
+    CREATE TABLE IF NOT EXISTS rewrites (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        analysis_id UUID NOT NULL REFERENCES analyses(id) ON DELETE CASCADE,
+        rewritten_code TEXT NOT NULL,
+        improvements JSONB DEFAULT '[]'::jsonb,
+        gas_savings_estimate INTEGER DEFAULT 0,
+        security_improvements JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        version INTEGER DEFAULT 1
+    );
+    
+    -- Create audit_logs table
+    CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        contract_id UUID REFERENCES contracts(id) ON DELETE SET NULL,
+        action VARCHAR(100) NOT NULL,
+        user_id VARCHAR(255),
+        ip_address INET,
+        user_agent TEXT,
+        details JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Create metrics table for monitoring
+    CREATE TABLE IF NOT EXISTS metrics (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        metric_name VARCHAR(100) NOT NULL,
+        metric_value NUMERIC NOT NULL,
+        tags JSONB DEFAULT '{}'::jsonb,
+        timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    -- Create indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_contracts_created_at ON contracts(created_at);
+    CREATE INDEX IF NOT EXISTS idx_contracts_user_id ON contracts(user_id);
+    CREATE INDEX IF NOT EXISTS idx_contracts_file_hash ON contracts(file_hash);
+    CREATE INDEX IF NOT EXISTS idx_contracts_language ON contracts(language);
+    
+    CREATE INDEX IF NOT EXISTS idx_analyses_contract_id ON analyses(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_analyses_status ON analyses(status);
+    CREATE INDEX IF NOT EXISTS idx_analyses_created_at ON analyses(created_at);
+    CREATE INDEX IF NOT EXISTS idx_analyses_type ON analyses(analysis_type);
+    
+    CREATE INDEX IF NOT EXISTS idx_rewrites_analysis_id ON rewrites(analysis_id);
+    CREATE INDEX IF NOT EXISTS idx_rewrites_created_at ON rewrites(created_at);
+    CREATE INDEX IF NOT EXISTS idx_rewrites_version ON rewrites(version);
+    
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_contract_id ON audit_logs(contract_id);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+    
+    CREATE INDEX IF NOT EXISTS idx_metrics_name ON metrics(metric_name);
+    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
+    
+    -- Create GIN indexes for JSONB columns
+    CREATE INDEX IF NOT EXISTS idx_contracts_metadata_gin ON contracts USING GIN(metadata);
+    CREATE INDEX IF NOT EXISTS idx_analyses_results_gin ON analyses USING GIN(results);
+    CREATE INDEX IF NOT EXISTS idx_analyses_suggestions_gin ON analyses USING GIN(suggestions);
+    CREATE INDEX IF NOT EXISTS idx_rewrites_improvements_gin ON rewrites USING GIN(improvements);
+    CREATE INDEX IF NOT EXISTS idx_audit_logs_details_gin ON audit_logs USING GIN(details);
+    CREATE INDEX IF NOT EXISTS idx_metrics_tags_gin ON metrics USING GIN(tags);
+    
+    -- Create updated_at trigger function
+    CREATE OR REPLACE FUNCTION update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+    END;
+    $$ language 'plpgsql';
+    
+    -- Create trigger for contracts table
+    DROP TRIGGER IF EXISTS update_contracts_updated_at ON contracts;
+    CREATE TRIGGER update_contracts_updated_at
+        BEFORE UPDATE ON contracts
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    
+    -- Create views for common queries
+    CREATE OR REPLACE VIEW contract_analysis_summary AS
+    SELECT 
+        c.id as contract_id,
+        c.name,
+        c.language,
+        c.created_at,
+        COUNT(a.id) as total_analyses,
+        COUNT(CASE WHEN a.status = 'completed' THEN 1 END) as completed_analyses,
+        COUNT(CASE WHEN a.status = 'failed' THEN 1 END) as failed_analyses,
+        MAX(a.created_at) as last_analysis_date,
+        SUM(a.vulnerability_count) as total_vulnerabilities,
+        SUM(a.gas_optimization_count) as total_optimizations
+    FROM contracts c
+    LEFT JOIN analyses a ON c.id = a.contract_id
+    GROUP BY c.id, c.name, c.language, c.created_at;
+    
+    -- Create a view for recent activity
+    CREATE OR REPLACE VIEW recent_activity AS
+    SELECT 
+        'contract' as activity_type,
+        c.id as entity_id,
+        c.name as entity_name,
+        'Contract uploaded' as activity,
+        c.created_at as timestamp,
+        c.user_id
+    FROM contracts c
+    WHERE c.created_at > CURRENT_TIMESTAMP - INTERVAL '7 days'
+    
+    UNION ALL
+    
+    SELECT 
+        'analysis' as activity_type,
+        a.id as entity_id,
+        c.name as entity_name,
+        'Analysis ' || a.status as activity,
+        COALESCE(a.completed_at, a.created_at) as timestamp,
+        '' as user_id
+    FROM analyses a
+    JOIN contracts c ON a.contract_id = c.id
+    WHERE COALESCE(a.completed_at, a.created_at) > CURRENT_TIMESTAMP - INTERVAL '7 days'
+    
+    ORDER BY timestamp DESC;
+    
+    -- Insert some sample data for testing (optional)
+    -- Uncomment the following lines if you want test data
+    /*
+    INSERT INTO contracts (name, original_code, language, file_hash, user_id) VALUES
+    ('Sample Token', 'pragma solidity ^0.8.0; contract SampleToken { }', 'solidity', 'abc123hash', 'test-user-1'),
+    ('Simple Storage', 'pragma solidity ^0.8.0; contract SimpleStorage { uint256 value; }', 'solidity', 'def456hash', 'test-user-2');
+    */
+    
+    -- Grant necessary permissions
+    GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO postgres;
+    GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO postgres;
+    GRANT SELECT ON ALL TABLES IN SCHEMA public TO postgres;
