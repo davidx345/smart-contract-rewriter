@@ -1,6 +1,6 @@
 """
 AI Service Microservice
-Handles all AI/ML operations including Gemini API integration
+Handles all AI/ML operations with OpenAI as primary and Gemini as fallback
 """
 
 from fastapi import FastAPI, HTTPException
@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import google.generativeai as genai
+import openai
 import json
 import os
 import time
@@ -15,18 +16,31 @@ import asyncio
 from datetime import datetime
 
 # Configuration
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
 
-# Configure Gemini
+# Configure AI services
+openai_client = None
+gemini_model = None
+
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
+    openai_client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+    try:
+        gemini_model = genai.GenerativeModel(GEMINI_MODEL)
+    except Exception as e:
+        print(f"Failed to initialize Gemini model: {e}")
 
 # Initialize FastAPI app
 app = FastAPI(
     title="SoliVolt AI Service",
-    description="AI/ML microservice for smart contract analysis and generation",
-    version="1.0.0",
+    description="AI/ML microservice for smart contract analysis and generation with OpenAI primary, Gemini fallback",
+    version="2.0.0",
     docs_url="/docs",
     openapi_url="/openapi.json"
 )
@@ -60,144 +74,216 @@ class AIResponse(BaseModel):
     model_used: str
     timestamp: str
 
-class GeminiService:
-    """Service for interacting with Gemini AI"""
+class EnhancedAIService:
+    """Enhanced AI Service with OpenAI primary and Gemini fallback"""
     
     def __init__(self):
-        self.model = None
-        if GEMINI_API_KEY:
-            try:
-                self.model = genai.GenerativeModel(GEMINI_MODEL)
-            except Exception as e:
-                print(f"Failed to initialize Gemini model: {e}")
+        self.openai_available = openai_client is not None
+        self.gemini_available = gemini_model is not None
+        
+        if not self.openai_available and not self.gemini_available:
+            print("Warning: No AI services available!")
     
     async def analyze_contract(self, contract_code: str, analysis_type: str = "security") -> Dict[str, Any]:
-        """Analyze smart contract using Gemini AI"""
-        if not self.model:
-            raise HTTPException(status_code=503, detail="AI model not available")
+        """Analyze smart contract using OpenAI first, then Gemini as fallback"""
         
-        # Create analysis prompt based on type
-        if analysis_type == "security":
-            prompt = self._create_security_analysis_prompt(contract_code)
-        elif analysis_type == "gas":
-            prompt = self._create_gas_analysis_prompt(contract_code)
-        else:
-            prompt = self._create_general_analysis_prompt(contract_code)
+        # Try OpenAI first
+        if self.openai_available:
+            try:
+                return await self._analyze_with_openai(contract_code, analysis_type)
+            except Exception as e:
+                print(f"OpenAI analysis failed, falling back to Gemini: {e}")
         
-        try:
-            start_time = time.time()
-            response = await asyncio.to_thread(self.model.generate_content, prompt)
-            processing_time = time.time() - start_time
-            
-            # Parse the response
-            result = self._parse_analysis_response(response.text, analysis_type)
-            result["processing_time"] = processing_time
-            
-            return result
-            
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
+        # Fallback to Gemini
+        if self.gemini_available:
+            try:
+                return await self._analyze_with_gemini(contract_code, analysis_type)
+            except Exception as e:
+                print(f"Gemini analysis also failed: {e}")
+                raise HTTPException(status_code=503, detail="All AI services unavailable")
+        
+        raise HTTPException(status_code=503, detail="No AI services available")
     
     async def generate_contract(self, description: str, features: List[str], contract_type: str) -> Dict[str, Any]:
-        """Generate smart contract using Gemini AI"""
-        if not self.model:
-            raise HTTPException(status_code=503, detail="AI model not available")
+        """Generate smart contract using OpenAI first, then Gemini as fallback"""
         
+        # Try OpenAI first
+        if self.openai_available:
+            try:
+                return await self._generate_with_openai(description, features, contract_type)
+            except Exception as e:
+                print(f"OpenAI generation failed, falling back to Gemini: {e}")
+        
+        # Fallback to Gemini
+        if self.gemini_available:
+            try:
+                return await self._generate_with_gemini(description, features, contract_type)
+            except Exception as e:
+                print(f"Gemini generation also failed: {e}")
+                raise HTTPException(status_code=503, detail="All AI services unavailable")
+        
+        raise HTTPException(status_code=503, detail="No AI services available")
+    
+    async def _analyze_with_openai(self, contract_code: str, analysis_type: str) -> Dict[str, Any]:
+        """Analyze contract using OpenAI"""
+        prompt = self._create_analysis_prompt(contract_code, analysis_type)
+        
+        start_time = time.time()
+        
+        response = await asyncio.to_thread(
+            openai_client.chat.completions.create,
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert Solidity smart contract security auditor and gas optimization specialist."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=4000
+        )
+        
+        processing_time = time.time() - start_time
+        content = response.choices[0].message.content
+        
+        result = self._parse_analysis_response(content, analysis_type)
+        result["processing_time"] = processing_time
+        result["model_used"] = OPENAI_MODEL
+        result["service_used"] = "OpenAI"
+        
+        return result
+    
+    async def _generate_with_openai(self, description: str, features: List[str], contract_type: str) -> Dict[str, Any]:
+        """Generate contract using OpenAI"""
         prompt = self._create_generation_prompt(description, features, contract_type)
         
-        try:
-            start_time = time.time()
-            response = await asyncio.to_thread(self.model.generate_content, prompt)
-            processing_time = time.time() - start_time
-            
-            # Parse the response
-            result = self._parse_generation_response(response.text)
-            result["processing_time"] = processing_time
-            
-            return result
-            
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"AI generation failed: {str(e)}")
+        start_time = time.time()
+        
+        response = await asyncio.to_thread(
+            openai_client.chat.completions.create,
+            model=OPENAI_MODEL,
+            messages=[
+                {"role": "system", "content": "You are an expert Solidity developer specializing in secure smart contract development."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=4000
+        )
+        
+        processing_time = time.time() - start_time
+        content = response.choices[0].message.content
+        
+        result = self._parse_generation_response(content)
+        result["processing_time"] = processing_time
+        result["model_used"] = OPENAI_MODEL
+        result["service_used"] = "OpenAI"
+        
+        return result
     
-    def _create_security_analysis_prompt(self, contract_code: str) -> str:
-        """Create security analysis prompt"""
-        return f"""
-        You are an expert smart contract security auditor. Analyze the following Solidity contract for security vulnerabilities, gas optimization opportunities, and best practices.
-
-        Contract Code:
-        ```solidity
-        {contract_code}
-        ```
-
-        Please provide a detailed analysis in the following JSON format:
-        {{
-            "vulnerabilities": [
-                {{
-                    "type": "vulnerability_name",
-                    "severity": "High|Medium|Low",
-                    "line_number": 0,
-                    "description": "detailed description",
-                    "recommendation": "how to fix"
-                }}
-            ],
-            "gas_optimizations": [
-                {{
-                    "function_name": "function_name",
-                    "issue": "description of gas issue",
-                    "recommendation": "optimization suggestion",
-                    "estimated_savings": "percentage or amount"
-                }}
-            ],
-            "code_quality": {{
-                "score": 85,
-                "issues": ["list of code quality issues"],
-                "suggestions": ["list of improvements"]
-            }},
-            "summary": "Overall assessment and key recommendations"
-        }}
-
-        Focus on common vulnerabilities like reentrancy, integer overflow/underflow, access control issues, and gas optimization opportunities.
-        """
+    async def _analyze_with_gemini(self, contract_code: str, analysis_type: str) -> Dict[str, Any]:
+        """Analyze contract using Gemini (fallback)"""
+        prompt = self._create_analysis_prompt(contract_code, analysis_type)
+        
+        start_time = time.time()
+        response = await asyncio.to_thread(gemini_model.generate_content, prompt)
+        processing_time = time.time() - start_time
+        
+        result = self._parse_analysis_response(response.text, analysis_type)
+        result["processing_time"] = processing_time
+        result["model_used"] = GEMINI_MODEL
+        result["service_used"] = "Gemini"
+        
+        return result
     
-    def _create_gas_analysis_prompt(self, contract_code: str) -> str:
-        """Create gas optimization analysis prompt"""
-        return f"""
-        You are a Solidity gas optimization expert. Analyze the following contract for gas efficiency improvements.
-
-        Contract Code:
-        ```solidity
-        {contract_code}
-        ```
-
-        Please provide gas optimization analysis in JSON format:
-        {{
-            "gas_analysis_per_function": [
-                {{
-                    "function_name": "function_name",
-                    "current_complexity": "estimated gas usage",
-                    "optimizations": ["list of optimization suggestions"],
-                    "potential_savings": "estimated percentage savings"
-                }}
-            ],
-            "general_optimizations": [
-                "storage optimization suggestions",
-                "computation optimization suggestions"
-            ],
-            "estimated_total_savings": "overall percentage savings"
-        }}
-        """
+    async def _generate_with_gemini(self, description: str, features: List[str], contract_type: str) -> Dict[str, Any]:
+        """Generate contract using Gemini (fallback)"""
+        prompt = self._create_generation_prompt(description, features, contract_type)
+        
+        start_time = time.time()
+        response = await asyncio.to_thread(gemini_model.generate_content, prompt)
+        processing_time = time.time() - start_time
+        
+        result = self._parse_generation_response(response.text)
+        result["processing_time"] = processing_time
+        result["model_used"] = GEMINI_MODEL
+        result["service_used"] = "Gemini"
+        
+        return result
     
-    def _create_general_analysis_prompt(self, contract_code: str) -> str:
-        """Create general analysis prompt"""
-        return f"""
-        Provide a comprehensive analysis of this Solidity smart contract:
+    def _create_analysis_prompt(self, contract_code: str, analysis_type: str) -> str:
+        """Create analysis prompt based on type"""
+        if analysis_type == "security":
+            return f"""
+            You are an expert smart contract security auditor. Analyze the following Solidity contract for security vulnerabilities, gas optimization opportunities, and best practices.
 
-        ```solidity
-        {contract_code}
-        ```
+            Contract Code:
+            ```solidity
+            {contract_code}
+            ```
 
-        Include security, gas efficiency, code quality, and functionality assessment in JSON format.
-        """
+            Please provide a detailed analysis in the following JSON format:
+            {{
+                "vulnerabilities": [
+                    {{
+                        "type": "vulnerability_name",
+                        "severity": "High|Medium|Low",
+                        "line_number": 0,
+                        "description": "detailed description",
+                        "recommendation": "how to fix"
+                    }}
+                ],
+                "gas_optimizations": [
+                    {{
+                        "function_name": "function_name",
+                        "issue": "description of gas issue",
+                        "recommendation": "optimization suggestion",
+                        "estimated_savings": "percentage or amount"
+                    }}
+                ],
+                "code_quality": {{
+                    "score": 85,
+                    "issues": ["list of code quality issues"],
+                    "suggestions": ["list of improvements"]
+                }},
+                "summary": "Overall assessment and key recommendations"
+            }}
+
+            Focus on common vulnerabilities like reentrancy, integer overflow/underflow, access control issues, and gas optimization opportunities.
+            """
+        elif analysis_type == "gas":
+            return f"""
+            You are a Solidity gas optimization expert. Analyze the following contract for gas efficiency improvements.
+
+            Contract Code:
+            ```solidity
+            {contract_code}
+            ```
+
+            Please provide gas optimization analysis in JSON format:
+            {{
+                "gas_analysis_per_function": [
+                    {{
+                        "function_name": "function_name",
+                        "current_complexity": "estimated gas usage",
+                        "optimizations": ["list of optimization suggestions"],
+                        "potential_savings": "estimated percentage savings"
+                    }}
+                ],
+                "general_optimizations": [
+                    "storage optimization suggestions",
+                    "computation optimization suggestions"
+                ],
+                "estimated_total_savings": "overall percentage savings"
+            }}
+            """
+        else:
+            return f"""
+            Provide a comprehensive analysis of this Solidity smart contract:
+
+            ```solidity
+            {contract_code}
+            ```
+
+            Include security, gas efficiency, code quality, and functionality assessment in JSON format.
+            """
     
     def _create_generation_prompt(self, description: str, features: List[str], contract_type: str) -> str:
         """Create contract generation prompt"""
@@ -278,22 +364,31 @@ class GeminiService:
             return {
                 "generated_code": response_text,
                 "explanation": "Generated content (unparsed)",
-                "raw_response": response_text
-            }
+                    "raw_response": response_text
+                }
 
 # Initialize AI service
-ai_service = GeminiService()
-
-# API Endpoints
+ai_service = EnhancedAIService()# API Endpoints
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
         "service": "ai-service",
-        "version": "1.0.0",
-        "model_available": ai_service.model is not None,
-        "model": GEMINI_MODEL
+        "version": "2.0.0",
+        "ai_services": {
+            "openai": {
+                "available": ai_service.openai_available,
+                "model": OPENAI_MODEL if ai_service.openai_available else None,
+                "priority": "primary"
+            },
+            "gemini": {
+                "available": ai_service.gemini_available,
+                "model": GEMINI_MODEL if ai_service.gemini_available else None,
+                "priority": "fallback"
+            }
+        },
+        "strategy": "OpenAI primary, Gemini fallback"
     }
 
 @app.post("/api/v1/ai/analyze", response_model=AIResponse)
@@ -364,14 +459,18 @@ async def root():
     """Root endpoint"""
     return {
         "service": "SoliVolt AI Service",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "endpoints": {
             "analyze": "/api/v1/ai/analyze",
             "generate": "/api/v1/ai/generate",
             "health": "/health",
             "docs": "/docs"
         },
-        "model": GEMINI_MODEL
+        "ai_strategy": "OpenAI primary, Gemini fallback",
+        "models": {
+            "openai": OPENAI_MODEL,
+            "gemini": GEMINI_MODEL
+        }
     }
 
 if __name__ == "__main__":

@@ -11,10 +11,10 @@ import type {
 class APIService {
   private api: AxiosInstance
 
-  constructor() {    // Railway backend URL (update with your actual Railway URL)
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://solivolt-8e0565441715.herokuapp.com';
+  constructor() {    
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://3.87.248.104';
     this.api = axios.create({
-      baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`, // Ensure /api/v1 is present
+      baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`,
       headers: {
         'Content-Type': 'application/json',
       },
@@ -62,7 +62,7 @@ class APIService {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     // Adjust health check endpoint if it's not under /api/v1
-    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://your-solivolt-backend.up.railway.app';
+    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://3.87.248.104';
     const healthApi = axios.create({ baseURL: healthBaseURL });
     const response = await healthApi.get('/health');
     return response.data;
