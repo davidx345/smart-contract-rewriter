@@ -41,6 +41,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://smart-contract-rewriter.vercel.app",
+        "https://solivolt.live",
+        "https://www.solivolt.live",
         "http://localhost:3000",
         "http://localhost:5173"
     ],

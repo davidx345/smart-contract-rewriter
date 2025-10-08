@@ -12,7 +12,7 @@ class APIService {
   private api: AxiosInstance
 
   constructor() {    
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://3.87.248.104';
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://api.solivolt.live';
     this.api = axios.create({
       baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`,
       headers: {
@@ -62,7 +62,7 @@ class APIService {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     // Adjust health check endpoint if it's not under /api/v1
-    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://3.87.248.104';
+    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://api.solivolt.live';
     const healthApi = axios.create({ baseURL: healthBaseURL });
     const response = await healthApi.get('/health');
     return response.data;
