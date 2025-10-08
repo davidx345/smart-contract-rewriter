@@ -49,7 +49,7 @@ const HomePage: React.FC<HomePageProps> = ({
       };
 
       const contractInput = {
-        source_code: formData.contract_code,
+        contract_code: formData.contract_code,
         contract_name: formData.contract_name?.trim() || extractContractName(formData.contract_code),
         compiler_version: formData.target_solidity_version || "0.8.19"
       };
@@ -110,7 +110,7 @@ const HomePage: React.FC<HomePageProps> = ({
       );
 
       const optimizationRequest = {
-        source_code: formData.contract_code,
+        contract_code: formData.contract_code,
         contract_name: formData.contract_name?.trim() || extractContractName(formData.contract_code),
         compiler_version: formData.target_solidity_version || "0.8.19",
         optimization_goals,

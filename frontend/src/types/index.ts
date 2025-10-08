@@ -207,13 +207,13 @@ export interface ContractHistoryResponse {
 
 // API Request Types
 export interface ContractInput {
-  source_code: string
+  contract_code: string
   contract_name?: string
   compiler_version?: string
 }
 
 export interface OptimizationRequest {
-  source_code: string
+  contract_code: string
   contract_name?: string
   compiler_version?: string
   optimization_goals: ('gas_efficiency' | 'security_hardening' | 'readability' | 'modularity' | 'upgradability' | 'storage_optimization' | 'transaction_speed')[]
