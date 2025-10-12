@@ -35,28 +35,40 @@ class APIService {
       }
     )    // Response interceptor
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Only treat status >= 400 as error
+        if (response.status && response.status >= 400) {
+          const errorData = response.data as { detail?: string | Array<{ msg: string, loc: string[], type: string }> } | undefined;
+          let errorMessage: string = 'An error occurred';
+          if (typeof errorData?.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else if (Array.isArray(errorData?.detail)) {
+            errorMessage = errorData.detail.map((err: { msg: string }) => err.msg).join(', ');
+          }
+          return Promise.reject({
+            detail: errorMessage,
+            status_code: response.status
+          });
+        }
+        return response;
+      },
       (error: AxiosError) => {
-        // Ensure errorData can be an array for validation errors or an object for other errors
+        // Network or unexpected error
         const errorData = error.response?.data as { detail?: string | Array<{ msg: string, loc: string[], type: string }> } | undefined;
         let errorMessage: string = 'An error occurred';
-
         if (typeof errorData?.detail === 'string') {
           errorMessage = errorData.detail;
         } else if (Array.isArray(errorData?.detail)) {
-          // Handle Pydantic validation errors
           errorMessage = errorData.detail.map((err: { msg: string }) => err.msg).join(', ');
         } else if (error.message) {
           errorMessage = error.message;
         }
-        
-        const apiError: APIError = {
+        return Promise.reject({
           detail: errorMessage,
           status_code: error.response?.status || 500
-        }
-        return Promise.reject(apiError)
+        });
       }
-    )
+    );
   }
 
   // Health check
