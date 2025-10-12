@@ -81,6 +81,12 @@ class RewriteRequest(BaseModel):
     contract_code: str
     requirements: Optional[str] = None
 
+class ContractGenerationRequest(BaseModel):
+    description: str
+    contract_name: str
+    features: Optional[List[str]] = None
+    compiler_version: Optional[str] = None
+
 # Dummy user store (replace with real database in production)
 fake_users_db = {
     "test@example.com": {
@@ -312,6 +318,86 @@ contract OptimizedContract is ReentrancyGuard {{
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Rewrite failed: {str(e)}")
+
+@app.post("/contracts/generate")
+async def generate_contract(
+    request: ContractGenerationRequest
+):
+    """Generate smart contract from description"""
+    try:
+        # Simple contract generation logic (replace with actual AI generation)
+        generated_code = f"""// SPDX-License-Identifier: MIT
+pragma solidity ^{request.compiler_version or '0.8.19'};
+
+/**
+ * @title {request.contract_name}
+ * @dev {request.description}
+ */
+contract {request.contract_name} {{
+    
+    // State variables
+    address public owner;
+    uint256 public totalSupply;
+    mapping(address => uint256) public balances;
+    
+    // Events
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    
+    // Modifiers
+    modifier onlyOwner() {{
+        require(msg.sender == owner, "Not the owner");
+        _;
+    }}
+    
+    // Constructor
+    constructor() {{
+        owner = msg.sender;
+        totalSupply = 1000000 * 10**18; // 1 million tokens
+        balances[owner] = totalSupply;
+        emit Transfer(address(0), owner, totalSupply);
+    }}
+    
+    // Main functions based on description: {request.description}
+    function transfer(address to, uint256 amount) public returns (bool) {{
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        require(to != address(0), "Invalid address");
+        
+        balances[msg.sender] -= amount;
+        balances[to] += amount;
+        
+        emit Transfer(msg.sender, to, amount);
+        return true;
+    }}
+    
+    function mint(address to, uint256 amount) public onlyOwner {{
+        require(to != address(0), "Invalid address");
+        
+        balances[to] += amount;
+        totalSupply += amount;
+        
+        emit Transfer(address(0), to, amount);
+    }}
+    
+    function transferOwnership(address newOwner) public onlyOwner {{
+        require(newOwner != address(0), "Invalid address");
+        emit OwnershipTransferred(owner, newOwner);
+        owner = newOwner;
+    }}
+    
+    // Additional features: {', '.join(request.features or [])}
+}}"""
+        
+        return {
+            "request_id": f"req_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}",
+            "original_code": "",
+            "rewritten_code": generated_code,
+            "processing_time_seconds": 3.0,
+            "message": "Contract generation completed successfully",
+            "generation_notes": f"Generated {request.contract_name} based on: {request.description}"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 @app.post("/contracts/upload")
 async def upload_contract(

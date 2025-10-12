@@ -538,31 +538,26 @@ const HomePage: React.FC<HomePageProps> = ({
                 {
                   title: 'Gas Optimization',
                   description: 'Reduce transaction costs by optimizing gas usage',
-                  icon: '⚡',
                   color: 'bg-yellow-100 text-yellow-600'
                 },
                 {
                   title: 'Security Analysis',
                   description: 'Identify vulnerabilities and security issues in your code',
-                  icon: '🛡️',
                   color: 'bg-green-100 text-green-600'
                 },
                 {
                   title: 'Code Quality',
                   description: 'Improve readability, maintainability, and best practices',
-                  icon: '📝',
                   color: 'bg-blue-100 text-blue-600'
                 },
                 {
                   title: 'Best Practices',
                   description: 'Apply industry standards and proven patterns',
-                  icon: '✨',
                   color: 'bg-purple-100 text-purple-600'
                 },
                 {
                   title: 'AI Generation',
                   description: 'Generate smart contracts from natural language descriptions',
-                  icon: '🧠',
                   color: 'bg-indigo-100 text-indigo-600'
                 }
               ].map((feature, index) => (
@@ -574,7 +569,7 @@ const HomePage: React.FC<HomePageProps> = ({
                   className="text-center p-6 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className={`w-16 h-16 ${feature.color} rounded-full flex items-center justify-center text-3xl mx-auto mb-4`}>
-                    {feature.icon}
+                    {feature.title.charAt(0)}
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {feature.title}
