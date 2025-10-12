@@ -14,7 +14,7 @@ class APIService {
   constructor() {    
     const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://api.solivolt.live';
     this.api = axios.create({
-      baseURL: baseURL.endsWith('/api/v1') ? baseURL : `${baseURL}/api/v1`,
+      baseURL: baseURL,
       headers: {
         'Content-Type': 'application/json',
       },
