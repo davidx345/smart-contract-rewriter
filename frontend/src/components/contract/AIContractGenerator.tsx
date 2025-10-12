@@ -149,12 +149,23 @@ export const AIContractGenerator: React.FC = () => {
         ? [...selectedTemplateData.features, ...customFeatures]
         : customFeatures;
 
+      console.log('🚀 Making API call with params:', {
+        description: description,
+        contract_name: selectedTemplate === 'custom' ? 'CustomContract' : (selectedTemplateData?.name.replace(/[^a-zA-Z0-9]/g, '') || 'CustomContract'),
+        features: allFeatures,
+        compiler_version: "0.8.19"
+      });
+
       const response = await api.generateContract({
         description: description,
         contract_name: selectedTemplate === 'custom' ? 'CustomContract' : (selectedTemplateData?.name.replace(/[^a-zA-Z0-9]/g, '') || 'CustomContract'),
         features: allFeatures,
         compiler_version: "0.8.19"
       });
+
+      console.log('🎉 API response received:', response);
+      console.log('🎉 Response keys:', Object.keys(response || {}));
+      console.log('🎉 Response rewritten_code length:', (response as any)?.rewritten_code?.length);
 
       // Transform backend response to match frontend interface
       const transformedContract: GeneratedContract = {
