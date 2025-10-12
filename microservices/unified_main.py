@@ -200,8 +200,7 @@ async def get_current_user_info(current_user: str = Depends(get_current_user)):
 # Contract Analysis Endpoints
 @app.post("/contracts/analyze")
 async def analyze_contract(
-    request: ContractAnalyzeRequest,
-    current_user: str = Depends(get_current_user)
+    request: ContractAnalyzeRequest
 ):
     """Analyze smart contract for security issues and optimization opportunities"""
     try:
@@ -228,7 +227,7 @@ async def analyze_contract(
                 "Optimize storage usage in loops",
                 "Consider using events for better transparency"
             ],
-            "analyzed_by": current_user,
+            "analyzed_by": "anonymous",
             "timestamp": datetime.utcnow().isoformat()
         }
         
@@ -261,15 +260,14 @@ async def analyze_contract(
 
 @app.post("/contracts/rewrite")
 async def rewrite_contract(
-    request: RewriteRequest,
-    current_user: str = Depends(get_current_user)
+    request: RewriteRequest
 ):
     """Rewrite smart contract based on analysis and requirements"""
     try:
         # Simple rewrite logic (replace with actual AI rewriting)
         rewritten_code = f"""// Rewritten Smart Contract
 // Original issues addressed
-// Optimized by: {current_user}
+// Optimized by: anonymous
 
 pragma solidity ^0.8.19;
 
@@ -317,8 +315,7 @@ contract OptimizedContract is ReentrancyGuard {{
 
 @app.post("/contracts/upload")
 async def upload_contract(
-    file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user)
+    file: UploadFile = File(...)
 ):
     """Upload and analyze a smart contract file"""
     try:
@@ -336,7 +333,7 @@ async def upload_contract(
             contract_name=file.filename
         )
         
-        return await analyze_contract(analysis_request, current_user)
+        return await analyze_contract(analysis_request)
         
     except UnicodeDecodeError:
         raise HTTPException(status_code=400, detail="Invalid file format. Please upload a text file.")
@@ -344,8 +341,8 @@ async def upload_contract(
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
 @app.get("/contracts/history")
-async def get_contract_history(current_user: str = Depends(get_current_user)):
-    """Get user's contract analysis history"""
+async def get_contract_history():
+    """Get contract analysis history"""
     # Mock history data (replace with database query)
     return {
         "contracts": [
