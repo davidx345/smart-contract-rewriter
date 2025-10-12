@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
@@ -165,8 +166,16 @@ export const AIContractGenerator: React.FC = () => {
       setGeneratedContract(transformedContract);
       console.log('Called setGeneratedContract, switching to contract tab');
       setActiveTab('contract');
+      
+      // Show success toast
+      toast.success('Contract generation completed successfully');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Contract generation failed');
+      console.error('Contract generation error:', err);
+      const errorMessage = err.response?.data?.detail || err.detail || 'Contract generation failed';
+      setError(errorMessage);
+      
+      // Show error toast
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
