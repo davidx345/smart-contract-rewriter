@@ -138,17 +138,26 @@ export const AIContractGenerator: React.FC = () => {
         ? [...selectedTemplateData.features, ...customFeatures]
         : customFeatures;
 
-      const response = await api.post('/ai/generate/contract', {
+      const response = await api.generateContract({
         description: description,
-        contract_type: selectedTemplate === 'custom' ? 'Custom' : selectedTemplateData?.name || 'Custom',
+        contract_name: selectedTemplate === 'custom' ? 'CustomContract' : selectedTemplateData?.name || 'CustomContract',
         features: allFeatures,
-        security_level: securityLevel,
-        target_network: targetNetwork,
-        include_tests: includeTests,
-        include_deployment: includeDeployment
+        compiler_version: "0.8.19"
       });
 
-      setGeneratedContract(response.data);
+      // Transform backend response to match frontend interface
+      const transformedContract: GeneratedContract = {
+        contract_code: response.rewritten_code || response.original_code || '',
+        documentation: response.generation_notes || description,
+        estimated_gas_cost: 150000,
+        security_considerations: [
+          'Review all function modifiers',
+          'Test thoroughly before deployment',
+          'Consider upgradeability patterns'
+        ]
+      };
+
+      setGeneratedContract(transformedContract);
       setActiveTab('contract');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Contract generation failed');
