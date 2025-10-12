@@ -167,19 +167,13 @@ const HomePage: React.FC<HomePageProps> = ({
       };
       
       const result: ContractOutput = await apiService.generateContract(generationRequest);
-      console.log('🎉 Generation result received in HomePage:', result);
-      console.log('🎉 Result has rewritten_code:', !!result.rewritten_code);
-      console.log('🎉 Result has original_code:', !!result.original_code);
-      
       setContractOutput(result);
       
       // Fix: Check rewritten_code instead of original_code for generated contracts
       if (result.rewritten_code || result.original_code) {
-        console.log('✅ Contract found, switching to generated view');
         setActiveView('generated');
         toast.success(result.message || 'Smart contract generated successfully!');
       } else {
-        console.log('❌ No contract code found in result');
         setError(result.message || 'Contract generation did not produce code.');
         toast.error(result.message || 'Contract generation did not produce code.');
       }
@@ -454,7 +448,7 @@ const HomePage: React.FC<HomePageProps> = ({
             </div>
           )}
 
-          {activeView === 'generated' && contractOutput?.original_code && (
+          {activeView === 'generated' && (contractOutput?.rewritten_code || contractOutput?.original_code) && (
             <div className="max-w-7xl mx-auto">
               <GeneratedContractDisplay
                 contractOutput={contractOutput}

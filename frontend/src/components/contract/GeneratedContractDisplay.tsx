@@ -24,13 +24,6 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
     }
   };
 
-  // Debug logging
-  console.log('🔍 GeneratedContractDisplay received contractOutput:', contractOutput);
-  console.log('🔍 Has rewritten_code:', !!contractOutput.rewritten_code);
-  console.log('🔍 Has original_code:', !!contractOutput.original_code);
-  console.log('🔍 Rewritten code length:', contractOutput.rewritten_code?.length || 0);
-  console.log('🔍 Original code length:', contractOutput.original_code?.length || 0);
-
   const downloadContract = () => {
     // For generated contracts, use rewritten_code; for analyzed contracts, use original_code
     const contractCode = contractOutput.rewritten_code || contractOutput.original_code;
@@ -127,15 +120,7 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
             
             <div className="relative">
               <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-                <code>
-                  {contractOutput.rewritten_code || contractOutput.original_code || 
-                   `// No contract code found
-// Debug info:
-// rewritten_code: ${contractOutput.rewritten_code ? 'present' : 'missing'}
-// original_code: ${contractOutput.original_code ? 'present' : 'missing'}
-// Available keys: ${Object.keys(contractOutput).join(', ')}`
-                  }
-                </code>
+                <code>{contractOutput.rewritten_code || contractOutput.original_code}</code>
               </pre>
             </div>
           </Card>
