@@ -25,9 +25,11 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
   };
 
   const downloadContract = () => {
-    const contractName = contractOutput.original_code.match(/contract\s+(\w+)/)?.[1] || 'GeneratedContract';
+    // For generated contracts, use rewritten_code; for analyzed contracts, use original_code
+    const contractCode = contractOutput.rewritten_code || contractOutput.original_code;
+    const contractName = contractCode.match(/contract\s+(\w+)/)?.[1] || 'GeneratedContract';
     const element = document.createElement('a');
-    const file = new Blob([contractOutput.original_code], { type: 'text/plain' });
+    const file = new Blob([contractCode], { type: 'text/plain' });
     element.href = URL.createObjectURL(file);
     element.download = `${contractName}.sol`;
     document.body.appendChild(element);
@@ -98,7 +100,7 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => copyToClipboard(contractOutput.original_code)}
+                  onClick={() => copyToClipboard(contractOutput.rewritten_code || contractOutput.original_code)}
                   className="flex items-center space-x-1"
                 >
                   <Copy className="w-4 h-4" />
@@ -118,7 +120,7 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
             
             <div className="relative">
               <pre className="bg-gray-900 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-                <code>{contractOutput.original_code}</code>
+                <code>{contractOutput.rewritten_code || contractOutput.original_code}</code>
               </pre>
             </div>
           </Card>
@@ -169,7 +171,7 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
               <div className="flex justify-between">
                 <span className="text-gray-600">Lines of Code:</span>
                 <span className="font-medium">
-                  {contractOutput.original_code.split('\n').length}
+                  {(contractOutput.rewritten_code || contractOutput.original_code).split('\n').length}
                 </span>
               </div>
             </div>

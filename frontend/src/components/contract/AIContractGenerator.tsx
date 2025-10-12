@@ -404,6 +404,11 @@ export const AIContractGenerator: React.FC = () => {
           <Button
             onClick={() => {
               console.log('🎯 Button clicked - onClick handler called');
+              console.log('🎯 Button disabled?', loading || !description.trim());
+              console.log('🎯 Loading state:', loading);
+              console.log('🎯 Description empty?', !description.trim());
+              console.log('🎯 Description value:', description);
+              console.log('🎯 Selected template:', selectedTemplate);
               generateContract();
             }}
             disabled={loading || !description.trim()}

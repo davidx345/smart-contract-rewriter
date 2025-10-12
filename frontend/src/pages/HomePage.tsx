@@ -169,7 +169,8 @@ const HomePage: React.FC<HomePageProps> = ({
       const result: ContractOutput = await apiService.generateContract(generationRequest);
       setContractOutput(result);
       
-      if (result.original_code) {
+      // Fix: Check rewritten_code instead of original_code for generated contracts
+      if (result.rewritten_code || result.original_code) {
         setActiveView('generated');
         toast.success(result.message || 'Smart contract generated successfully!');
       } else {
