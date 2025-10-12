@@ -278,7 +278,7 @@ export const OrganizationDashboard: React.FC = () => {
       {error && (
         <Card className="p-4 border-red-200 bg-red-50">
           <div className="flex items-center space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <span className="text-red-600">Warning</span>
             <span className="text-red-700">{error}</span>
             <button
               onClick={() => setError(null)}
@@ -297,12 +297,12 @@ export const OrganizationDashboard: React.FC = () => {
           <Card className="p-4">
             <div className="flex space-x-4 border-b">
               {[
-                { id: 'overview', label: '📊 Overview' },
-                { id: 'members', label: '👥 Team', count: members.length },
-                { id: 'api-keys', label: '🔑 API Keys', count: apiKeys.length },
-                { id: 'usage', label: '📈 Usage' },
-                { id: 'billing', label: '💳 Billing' },
-                { id: 'settings', label: '⚙️ Settings' }
+                { id: 'overview', label: 'Overview' },
+                { id: 'members', label: 'Team', count: members.length },
+                { id: 'api-keys', label: 'API Keys', count: apiKeys.length },
+                { id: 'usage', label: 'Usage' },
+                { id: 'billing', label: 'Billing' },
+                { id: 'settings', label: 'Settings' }
               ].map(tab => (
                 <button
                   key={tab.id}

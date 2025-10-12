@@ -461,7 +461,7 @@ const HomePage: React.FC<HomePageProps> = ({
             <div className="max-w-7xl mx-auto">
               <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                  🤖 Advanced AI Analysis
+                  Advanced AI Analysis
                 </h2>
                 <p className="text-gray-600">
                   Comprehensive ML-powered security analysis and optimization
@@ -481,7 +481,7 @@ const HomePage: React.FC<HomePageProps> = ({
             <div className="max-w-7xl mx-auto">
               <div className="mb-8 text-center">
                 <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                  🚀 AI Contract Generator
+                  AI Contract Generator
                 </h2>
                 <p className="text-gray-600">
                   Generate production-ready smart contracts using advanced AI

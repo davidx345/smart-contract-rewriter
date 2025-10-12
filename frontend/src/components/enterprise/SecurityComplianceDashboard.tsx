@@ -192,7 +192,7 @@ export const SecurityComplianceDashboard: React.FC = () => {
       {error && (
         <Card className="p-4 border-red-200 bg-red-50">
           <div className="flex items-center space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <span className="text-red-600">Warning</span>
             <span className="text-red-700">{error}</span>
             <button
               onClick={() => setError(null)}
@@ -254,9 +254,9 @@ export const SecurityComplianceDashboard: React.FC = () => {
       <Card className="p-4">
         <div className="flex space-x-4 border-b">
           {[
-            { id: 'audit', label: '📋 Audit Logs', count: auditLogs.length },
-            { id: 'reports', label: '📊 Compliance Reports', count: reports.length },
-            { id: 'alerts', label: '🚨 Security Alerts' }
+            { id: 'audit', label: 'Audit Logs', count: auditLogs.length },
+            { id: 'reports', label: 'Compliance Reports', count: reports.length },
+            { id: 'alerts', label: 'Security Alerts' }
           ].map(tab => (
             <button
               key={tab.id}
@@ -487,7 +487,7 @@ export const SecurityComplianceDashboard: React.FC = () => {
         {activeTab === 'alerts' && (
           <div className="space-y-4">
             <Card className="p-6 text-center text-gray-500">
-              <div className="text-4xl mb-4">🚨</div>
+              <div className="text-4xl mb-4 text-red-500 font-bold">!</div>
               <h3 className="text-lg font-medium mb-2">Security Alert System</h3>
               <p>Real-time security monitoring and alerting system would be implemented here.</p>
               <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">

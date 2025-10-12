@@ -181,7 +181,7 @@ export const BillingDashboard: React.FC = () => {
       {error && (
         <Card className="p-4 border-red-200 bg-red-50">
           <div className="flex items-center space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <span className="text-red-600">Warning</span>
             <span className="text-red-700">{error}</span>
             <button
               onClick={() => setError(null)}
@@ -303,7 +303,7 @@ export const BillingDashboard: React.FC = () => {
                   <ul className="space-y-1">
                     {plan.features.slice(0, 3).map((feature, index) => (
                       <li key={index} className="text-sm text-gray-600 flex items-center">
-                        <span className="text-green-500 mr-2">✓</span>
+                        <span className="text-green-500 mr-2">Included</span>
                         {feature}
                       </li>
                     ))}
@@ -347,7 +347,7 @@ export const BillingDashboard: React.FC = () => {
                 <div key={method.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center">
-                      {method.type === 'card' ? '💳' : '🏦'}
+                      {method.type === 'card' ? 'Card' : 'Bank'}
                     </div>
                     <div>
                       <div className="font-medium">
@@ -534,7 +534,7 @@ export const BillingDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Add Payment Method</h3>
             <div className="space-y-4">
               <div className="p-4 border-2 border-dashed border-gray-300 rounded-lg text-center">
-                <div className="text-gray-500 mb-2">💳</div>
+                <div className="text-gray-500 mb-2">Payment</div>
                 <p className="text-sm text-gray-600">
                   Stripe payment integration would be implemented here
                 </p>

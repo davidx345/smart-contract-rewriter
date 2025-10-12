@@ -150,7 +150,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
     <div className="space-y-6">
       {/* Analysis Controls */}
       <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">🤖 Advanced AI Analysis</h3>
+        <h3 className="text-lg font-semibold mb-4">Advanced AI Analysis</h3>
         
         <div className="space-y-4">
           <div>
@@ -180,7 +180,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
                 Analyzing Contract...
               </>
             ) : (
-              '🔍 Run Advanced Analysis'
+              'Run Advanced Analysis'
             )}
           </Button>
         </div>
@@ -190,7 +190,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
       {error && (
         <Card className="p-4 border-red-200 bg-red-50">
           <div className="flex items-center space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <span className="text-red-600">Warning</span>
             <span className="text-red-700">{error}</span>
           </div>
         </Card>
@@ -202,7 +202,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
           {/* Overview */}
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">📊 Analysis Overview</h3>
+              <h3 className="text-lg font-semibold">Analysis Overview</h3>
               <div className={`px-3 py-1 rounded-full text-sm font-medium border ${getRiskLevelColor(analysis.risk_level)}`}>
                 Risk Level: {analysis.risk_level}
               </div>
@@ -238,11 +238,11 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
           <Card className="p-6">
             <div className="flex space-x-4 mb-6 border-b">
               {[
-                { id: 'vulnerabilities', label: '🛡️ Security', count: analysis.vulnerabilities.length },
+                { id: 'vulnerabilities', label: 'Security', count: analysis.vulnerabilities.length },
                 { id: 'gas', label: '⛽ Gas Optimization', enabled: !!analysis.gas_optimization },
-                { id: 'compliance', label: '📋 Compliance', enabled: !!analysis.compliance },
-                { id: 'metrics', label: '📈 Metrics', enabled: !!analysis.metrics },
-                { id: 'recommendations', label: '💡 Recommendations', count: analysis.recommendations.length }
+                { id: 'compliance', label: 'Compliance', enabled: !!analysis.compliance },
+                { id: 'metrics', label: 'Metrics', enabled: !!analysis.metrics },
+                { id: 'recommendations', label: 'Recommendations', count: analysis.recommendations.length }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -270,7 +270,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
                 <div className="space-y-4">
                   {analysis.vulnerabilities.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
-                      ✅ No vulnerabilities detected
+                      No vulnerabilities detected
                     </div>
                   ) : (
                     analysis.vulnerabilities.map((vuln, index) => (
@@ -394,7 +394,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
                       <ul className="space-y-1">
                         {analysis.compliance.recommendations.map((rec, index) => (
                           <li key={index} className="flex items-start space-x-2">
-                            <span className="text-blue-500">💡</span>
+                            <span className="text-blue-500">Tip</span>
                             <span className="text-sm">{rec}</span>
                           </li>
                         ))}
@@ -454,7 +454,7 @@ export const AdvancedAnalysisDisplay: React.FC<AdvancedAnalysisDisplayProps> = (
                 <div className="space-y-3">
                   {analysis.recommendations.map((rec, index) => (
                     <div key={index} className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
-                      <span className="text-blue-500 mt-0.5">💡</span>
+                      <span className="text-blue-500 mt-0.5">Tip</span>
                       <span className="text-blue-800">{rec}</span>
                     </div>
                   ))}

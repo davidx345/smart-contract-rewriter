@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { Sparkles, FileText, Settings, Plus, Trash2 } from 'lucide-react';
+import { FileText, Settings, Plus, Trash2 } from 'lucide-react';
 import Button from '../ui/Button';
 import Textarea from '../ui/Textarea';
 import Input from '../ui/Input';
@@ -314,7 +314,6 @@ const ContractGenerator: React.FC<ContractGeneratorProps> = ({
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-5 h-5" />
                   <span>Generate Smart Contract</span>
                 </>
               )}

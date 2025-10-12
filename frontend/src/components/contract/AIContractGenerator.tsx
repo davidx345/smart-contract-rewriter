@@ -30,7 +30,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'erc20',
     name: 'ERC-20 Token',
     description: 'Standard fungible token contract',
-    icon: '🪙',
+    icon: '',
     features: ['Transfer', 'Approve', 'Mint', 'Burn'],
     complexity: 'Basic'
   },
@@ -38,7 +38,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'erc721',
     name: 'ERC-721 NFT',
     description: 'Non-fungible token contract',
-    icon: '🎨',
+    icon: '',
     features: ['Mint NFT', 'Transfer', 'Metadata', 'Royalties'],
     complexity: 'Intermediate'
   },
@@ -46,7 +46,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'erc1155',
     name: 'ERC-1155 Multi-Token',
     description: 'Multi-token standard contract',
-    icon: '🎲',
+    icon: '',
     features: ['Batch Operations', 'Multiple Token Types', 'Efficient Storage'],
     complexity: 'Advanced'
   },
@@ -54,7 +54,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'defi',
     name: 'DeFi Protocol',
     description: 'Decentralized finance protocol',
-    icon: '🏦',
+    icon: '',
     features: ['Liquidity Pool', 'Staking', 'Yield Farming', 'Governance'],
     complexity: 'Advanced'
   },
@@ -62,7 +62,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'dao',
     name: 'DAO Governance',
     description: 'Decentralized autonomous organization',
-    icon: '🗳️',
+    icon: '',
     features: ['Voting', 'Proposals', 'Treasury', 'Multi-sig'],
     complexity: 'Advanced'
   },
@@ -70,7 +70,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'marketplace',
     name: 'NFT Marketplace',
     description: 'NFT trading marketplace',
-    icon: '🛒',
+    icon: '',
     features: ['Buy/Sell', 'Auctions', 'Royalties', 'Escrow'],
     complexity: 'Advanced'
   },
@@ -78,7 +78,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'staking',
     name: 'Staking Contract',
     description: 'Token staking and rewards',
-    icon: '💎',
+    icon: '',
     features: ['Stake/Unstake', 'Rewards', 'Time Lock', 'APY Calculation'],
     complexity: 'Intermediate'
   },
@@ -86,7 +86,7 @@ const CONTRACT_TEMPLATES: ContractTemplate[] = [
     id: 'custom',
     name: 'Custom Contract',
     description: 'Build from natural language description',
-    icon: '⚡',
+    icon: '',
     features: ['AI Generated', 'Custom Logic', 'Flexible Features'],
     complexity: 'Basic'
   }
@@ -121,26 +121,26 @@ export const AIContractGenerator: React.FC = () => {
   };
 
   const generateContract = async () => {
-    console.log('🔥 Generate button clicked!');
+    console.log('Generate button clicked!');
     console.log('Selected template:', selectedTemplate);
     console.log('Description:', description);
     console.log('Description length:', description.trim().length);
     
     if (!selectedTemplate) {
-      console.log('❌ No template selected');
+      console.log('No template selected');
       setError('Please select a contract template');
       toast.error('Please select a contract template');
       return;
     }
 
     if (!description.trim()) {
-      console.log('❌ No description provided');
+      console.log('No description provided');
       setError('Please provide a description for your contract');
       toast.error('Please provide a description for your contract');
       return;
     }
 
-    console.log('✅ Validation passed, starting generation...');
+    console.log('Validation passed, starting generation...');
     setLoading(true);
     setError(null);
 
@@ -149,7 +149,7 @@ export const AIContractGenerator: React.FC = () => {
         ? [...selectedTemplateData.features, ...customFeatures]
         : customFeatures;
 
-      console.log('🚀 Making API call with params:', {
+      console.log('Making API call with params:', {
         description: description,
         contract_name: selectedTemplate === 'custom' ? 'CustomContract' : (selectedTemplateData?.name.replace(/[^a-zA-Z0-9]/g, '') || 'CustomContract'),
         features: allFeatures,
@@ -163,9 +163,9 @@ export const AIContractGenerator: React.FC = () => {
         compiler_version: "0.8.19"
       });
 
-      console.log('🎉 API response received:', response);
-      console.log('🎉 Response keys:', Object.keys(response || {}));
-      console.log('🎉 Response rewritten_code length:', (response as any)?.rewritten_code?.length);
+      console.log('API response received:', response);
+      console.log('Response keys:', Object.keys(response || {}));
+      console.log('Response rewritten_code length:', (response as any)?.rewritten_code?.length);
 
       // Transform backend response to match frontend interface
       const transformedContract: GeneratedContract = {
@@ -227,7 +227,7 @@ export const AIContractGenerator: React.FC = () => {
     <div className="space-y-6">
       {/* Header */}
       <Card className="p-6">
-        <h2 className="text-2xl font-bold mb-2">🤖 AI Contract Generator</h2>
+        <h2 className="text-2xl font-bold mb-2">AI Contract Generator</h2>
         <p className="text-gray-600">
           Generate production-ready smart contracts using advanced AI. 
           Choose a template or describe your custom requirements.
@@ -300,7 +300,7 @@ export const AIContractGenerator: React.FC = () => {
                 <div className="flex flex-wrap gap-2">
                   {selectedTemplateData.features.map((feature, index) => (
                     <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                      ✓ {feature}
+                      {feature}
                     </span>
                   ))}
                 </div>
@@ -403,12 +403,12 @@ export const AIContractGenerator: React.FC = () => {
         <Card className="p-6">
           <Button
             onClick={() => {
-              console.log('🎯 Button clicked - onClick handler called');
-              console.log('🎯 Button disabled?', loading || !description.trim());
-              console.log('🎯 Loading state:', loading);
-              console.log('🎯 Description empty?', !description.trim());
-              console.log('🎯 Description value:', description);
-              console.log('🎯 Selected template:', selectedTemplate);
+              console.log('Button clicked - onClick handler called');
+              console.log('Button disabled?', loading || !description.trim());
+              console.log('Loading state:', loading);
+              console.log('Description empty?', !description.trim());
+              console.log('Description value:', description);
+              console.log('Selected template:', selectedTemplate);
               generateContract();
             }}
             disabled={loading || !description.trim()}
@@ -441,7 +441,7 @@ export const AIContractGenerator: React.FC = () => {
         <div className="space-y-6">
           {/* Contract Summary */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4">✅ Generated Contract</h3>
+            <h3 className="text-lg font-semibold mb-4">Generated Contract</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
@@ -458,7 +458,7 @@ export const AIContractGenerator: React.FC = () => {
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <div className="text-xl font-bold text-purple-600">
-                  {includeTests ? '✓' : '✗'}
+                  {includeTests ? 'Yes' : 'No'}
                 </div>
                 <div className="text-sm text-purple-600">Tests Included</div>
               </div>
@@ -466,11 +466,11 @@ export const AIContractGenerator: React.FC = () => {
 
             {/* Security Considerations */}
             <div>
-              <h4 className="font-semibold mb-2">🔒 Security Features:</h4>
+              <h4 className="font-semibold mb-2">Security Features:</h4>
               <div className="flex flex-wrap gap-2">
                 {generatedContract.security_considerations.map((consideration, index) => (
                   <span key={index} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                    ✓ {consideration}
+                    {consideration}
                   </span>
                 ))}
               </div>
@@ -481,10 +481,10 @@ export const AIContractGenerator: React.FC = () => {
           <Card className="p-6">
             <div className="flex space-x-4 mb-6 border-b">
               {[
-                { id: 'contract', label: '📄 Contract Code', enabled: true },
-                { id: 'tests', label: '🧪 Tests', enabled: !!generatedContract.test_code },
-                { id: 'deployment', label: '🚀 Deployment', enabled: !!generatedContract.deployment_script },
-                { id: 'documentation', label: '📚 Documentation', enabled: true }
+                { id: 'contract', label: 'Contract Code', enabled: true },
+                { id: 'tests', label: 'Tests', enabled: !!generatedContract.test_code },
+                { id: 'deployment', label: 'Deployment', enabled: !!generatedContract.deployment_script },
+                { id: 'documentation', label: 'Documentation', enabled: true }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -512,7 +512,7 @@ export const AIContractGenerator: React.FC = () => {
                       variant="outline"
                       size="sm"
                     >
-                      📥 Download
+                      Download
                     </Button>
                   </div>
                   <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">

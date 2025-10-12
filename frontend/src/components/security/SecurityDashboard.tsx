@@ -129,7 +129,7 @@ export const SecurityDashboard: React.FC = () => {
       {error && (
         <Card className="p-4 border-red-200 bg-red-50">
           <div className="flex items-center space-x-2">
-            <span className="text-red-600">⚠️</span>
+            <span className="text-red-600">Warning</span>
             <span className="text-red-700">{error}</span>
             <button
               onClick={() => setError(null)}
@@ -196,7 +196,7 @@ export const SecurityDashboard: React.FC = () => {
             
             <div className="text-center">
               <div className={`text-2xl font-semibold ${compliance.gdpr_compliant ? 'text-green-600' : 'text-red-600'}`}>
-                {compliance.gdpr_compliant ? '✓ Compliant' : '✗ Non-Compliant'}
+                {compliance.gdpr_compliant ? 'Compliant' : 'Non-Compliant'}
               </div>
               <div className="text-sm text-gray-600 mt-1">GDPR Status</div>
             </div>
