@@ -26,13 +26,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Import and mount contract service
-import importlib.util
-contract_service_path = os.path.join(os.path.dirname(__file__), "contract-service", "main.py")
-spec = importlib.util.spec_from_file_location("contract_service_main", contract_service_path)
-contract_service_main = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(contract_service_main)
-app.mount("/api/v1/contracts", contract_service_main.app)
+# Import and mount contract service - TEMPORARILY DISABLED
+# import importlib.util
+# contract_service_path = os.path.join(os.path.dirname(__file__), "contract-service", "main.py")
+# spec = importlib.util.spec_from_file_location("contract_service_main", contract_service_path)
+# contract_service_main = importlib.util.module_from_spec(spec)
+# spec.loader.exec_module(contract_service_main)
+# app.mount("/api/v1/contracts", contract_service_main.app)
 
 # Built-in authentication (no external dependencies)
 

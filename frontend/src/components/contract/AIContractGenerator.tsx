@@ -140,7 +140,7 @@ export const AIContractGenerator: React.FC = () => {
 
       const response = await api.generateContract({
         description: description,
-        contract_name: selectedTemplate === 'custom' ? 'CustomContract' : selectedTemplateData?.name || 'CustomContract',
+        contract_name: selectedTemplate === 'custom' ? 'CustomContract' : (selectedTemplateData?.name.replace(/[^a-zA-Z0-9]/g, '') || 'CustomContract'),
         features: allFeatures,
         compiler_version: "0.8.19"
       });
@@ -157,7 +157,13 @@ export const AIContractGenerator: React.FC = () => {
         ]
       };
 
+      console.log('Backend response:', response);
+      console.log('Transformed contract:', transformedContract);
+      console.log('Contract code length:', transformedContract.contract_code.length);
+      console.log('About to setGeneratedContract with:', transformedContract);
+
       setGeneratedContract(transformedContract);
+      console.log('Called setGeneratedContract, switching to contract tab');
       setActiveTab('contract');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Contract generation failed');
@@ -397,7 +403,7 @@ export const AIContractGenerator: React.FC = () => {
         <div className="space-y-6">
           {/* Contract Summary */}
           <Card className="p-6">
-            <h3 className="text-lg font-semibold mb-4"> Generated Contract</h3>
+            <h3 className="text-lg font-semibold mb-4">✅ Generated Contract</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
