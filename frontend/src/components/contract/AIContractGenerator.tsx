@@ -121,16 +121,26 @@ export const AIContractGenerator: React.FC = () => {
   };
 
   const generateContract = async () => {
+    console.log('🔥 Generate button clicked!');
+    console.log('Selected template:', selectedTemplate);
+    console.log('Description:', description);
+    console.log('Description length:', description.trim().length);
+    
     if (!selectedTemplate) {
+      console.log('❌ No template selected');
       setError('Please select a contract template');
+      toast.error('Please select a contract template');
       return;
     }
 
     if (!description.trim()) {
+      console.log('❌ No description provided');
       setError('Please provide a description for your contract');
+      toast.error('Please provide a description for your contract');
       return;
     }
 
+    console.log('✅ Validation passed, starting generation...');
     setLoading(true);
     setError(null);
 
@@ -381,7 +391,10 @@ export const AIContractGenerator: React.FC = () => {
       {selectedTemplate && (
         <Card className="p-6">
           <Button
-            onClick={generateContract}
+            onClick={() => {
+              console.log('🎯 Button clicked - onClick handler called');
+              generateContract();
+            }}
             disabled={loading || !description.trim()}
             className="w-full text-lg py-3"
           >
