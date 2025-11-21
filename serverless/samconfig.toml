@@ -1,0 +1,50 @@
+# AWS SAM Configuration File
+# This file stores deployment parameters so you don't have to type them every time
+
+version = 0.1
+
+[default]
+[default.global.parameters]
+stack_name = "smart-contract-analyzer"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+region = "us-east-1"
+parameter_overrides = [
+    "Environment=dev",
+    "EnableS3Trigger=false"
+]
+
+[default.package.parameters]
+resolve_s3 = true
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
+
+# Production environment configuration
+[prod]
+[prod.deploy.parameters]
+stack_name = "smart-contract-analyzer-prod"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+resolve_s3 = true
+parameter_overrides = [
+    "Environment=prod",
+    "EnableS3Trigger=true"
+]

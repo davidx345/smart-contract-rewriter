@@ -1,0 +1,28 @@
+{
+  "resource": "/analyze",
+  "path": "/analyze",
+  "httpMethod": "POST",
+  "headers": {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+    "Host": "api.example.com",
+    "User-Agent": "Mozilla/5.0"
+  },
+  "queryStringParameters": null,
+  "pathParameters": null,
+  "stageVariables": null,
+  "requestContext": {
+    "accountId": "123456789012",
+    "resourceId": "abc123",
+    "stage": "dev",
+    "requestId": "test-request-id",
+    "identity": {
+      "sourceIp": "192.168.1.1",
+      "userAgent": "Mozilla/5.0"
+    },
+    "resourcePath": "/analyze",
+    "httpMethod": "POST"
+  },
+  "body": "{\"contract_code\": \"pragma solidity ^0.8.0;\\n\\ncontract VulnerableBank {\\n    mapping(address => uint256) public balances;\\n    \\n    function deposit() public payable {\\n        balances[msg.sender] += msg.value;\\n    }\\n    \\n    function withdraw(uint256 amount) public {\\n        require(balances[msg.sender] >= amount);\\n        (bool success, ) = msg.sender.call{value: amount}(\\\"\\\");\\n        require(success);\\n        balances[msg.sender] -= amount;\\n    }\\n}\", \"contract_name\": \"VulnerableBank\", \"analysis_type\": \"security\"}",
+  "isBase64Encoded": false
+}

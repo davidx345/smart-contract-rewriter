@@ -1,0 +1,375 @@
+# AWS SAM Template for Smart Contract Analyzer
+# SAM = Serverless Application Model (simplified CloudFormation)
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Smart Contract Analyzer Serverless Application
+  
+  This deploys:
+  - Lambda function for contract analysis
+  - API Gateway REST API
+  - IAM roles and permissions
+  - CloudWatch Logs
+  - Optional: S3 bucket for contract uploads
+
+# Global configuration applied to all resources
+Globals:
+  Function:
+    Timeout: 300              # 5 minutes max (AI analysis can be slow)
+    MemorySize: 1024          # 1GB RAM (AI libraries need memory)
+    Runtime: python3.11       # Latest Python runtime
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        LOG_LEVEL: INFO
+        PYTHONPATH: /var/task  # Lambda Python path
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"      # Configure this properly for production!
+      AllowCredentials: false
+
+# Parameters - these can be provided during deployment
+Parameters:
+  OpenAIAPIKey:
+    Type: String
+    Description: OpenAI API Key for GPT-4 analysis (primary)
+    NoEcho: true              # Hide in console (security)
+    
+  GeminiAPIKey:
+    Type: String
+    Description: Google Gemini API Key (fallback)
+    NoEcho: true
+    
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues:
+      - dev
+      - staging
+      - prod
+    Description: Deployment environment
+    
+  EnableS3Trigger:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Enable S3 upload trigger for automatic analysis
+
+# Conditions for conditional resource creation
+Conditions:
+  CreateS3Bucket: !Equals [!Ref EnableS3Trigger, 'true']
+  IsProduction: !Equals [!Ref Environment, 'prod']
+
+Resources:
+  
+  # ===================================================================
+  # Lambda Function - Contract Analyzer
+  # ===================================================================
+  
+  ContractAnalyzerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${Environment}-contract-analyzer'
+      Description: Analyzes Solidity smart contracts for security and gas optimization
+      CodeUri: contract-analyzer/          # Points to our handler.py directory
+      Handler: handler.lambda_handler      # handler.py -> lambda_handler function
+      
+      # Environment variables passed to Lambda
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIAPIKey
+          GEMINI_API_KEY: !Ref GeminiAPIKey
+          OPENAI_MODEL: !If [IsProduction, 'gpt-4', 'gpt-3.5-turbo']  # Cost optimization
+          GEMINI_MODEL: 'gemini-1.5-flash'
+          ENVIRONMENT: !Ref Environment
+      
+      # API Gateway trigger
+      Events:
+        AnalyzeContract:
+          Type: Api
+          Properties:
+            Path: /analyze
+            Method: post
+            RestApiId: !Ref ContractAnalyzerAPI
+        
+        HealthCheck:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: get
+            RestApiId: !Ref ContractAnalyzerAPI
+      
+      # IAM permissions for Lambda
+      Policies:
+        - CloudWatchLogsFullAccess        # Write logs
+        - AWSXRayDaemonWriteAccess        # X-Ray tracing (optional)
+        
+        # S3 access (if S3 trigger enabled)
+        - !If
+          - CreateS3Bucket
+          - Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub '${ContractUploadBucket.Arn}/*'
+          - !Ref AWS::NoValue
+      
+      # Tags for organization
+      Tags:
+        Project: SmartContractRewriter
+        Component: ContractAnalyzer
+        Environment: !Ref Environment
+        ManagedBy: SAM
+  
+  # ===================================================================
+  # API Gateway - REST API
+  # ===================================================================
+  
+  ContractAnalyzerAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub '${Environment}-contract-analyzer-api'
+      StageName: !Ref Environment
+      Description: API Gateway for Smart Contract Analysis
+      
+      # Enable API Gateway logging
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiGatewayLogGroup.Arn
+        Format: '$context.requestId $context.extendedRequestId $context.error.message $context.error.messageString'
+      
+      # Throttling to prevent abuse
+      MethodSettings:
+        - ResourcePath: '/*'
+          HttpMethod: '*'
+          ThrottlingBurstLimit: 100    # Max concurrent requests
+          ThrottlingRateLimit: 50      # Requests per second
+      
+      # Enable X-Ray tracing
+      TracingEnabled: true
+      
+      Tags:
+        Project: SmartContractRewriter
+        Component: API
+        Environment: !Ref Environment
+  
+  # ===================================================================
+  # CloudWatch Log Groups - For debugging and monitoring
+  # ===================================================================
+  
+  ContractAnalyzerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${Environment}-contract-analyzer'
+      RetentionInDays: !If [IsProduction, 30, 7]  # Keep logs longer in prod
+  
+  ApiGatewayLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${Environment}-contract-analyzer'
+      RetentionInDays: !If [IsProduction, 30, 7]
+  
+  # ===================================================================
+  # S3 Bucket - For contract uploads (optional, based on parameter)
+  # ===================================================================
+  
+  ContractUploadBucket:
+    Type: AWS::S3::Bucket
+    Condition: CreateS3Bucket
+    Properties:
+      BucketName: !Sub '${Environment}-smart-contracts-${AWS::AccountId}'
+      
+      # Security: Block public access
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      
+      # Enable versioning
+      VersioningConfiguration:
+        Status: Enabled
+      
+      # Encryption at rest
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      
+      # Lifecycle rules
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldContracts
+            Status: Enabled
+            ExpirationInDays: 90        # Delete after 90 days
+            NoncurrentVersionExpirationInDays: 30
+      
+      # Trigger Lambda on upload
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: s3:ObjectCreated:*
+            Function: !GetAtt S3TriggerFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: suffix
+                    Value: .sol         # Only trigger on .sol files
+      
+      Tags:
+        - Key: Project
+          Value: SmartContractRewriter
+        - Key: Component
+          Value: Storage
+        - Key: Environment
+          Value: !Ref Environment
+  
+  # ===================================================================
+  # S3 Trigger Lambda - Automatic analysis on upload
+  # ===================================================================
+  
+  S3TriggerFunction:
+    Type: AWS::Serverless::Function
+    Condition: CreateS3Bucket
+    Properties:
+      FunctionName: !Sub '${Environment}-contract-analyzer-s3-trigger'
+      Description: Automatically analyzes contracts uploaded to S3
+      CodeUri: contract-analyzer/
+      Handler: handler.handler_for_s3_trigger
+      
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAIAPIKey
+          GEMINI_API_KEY: !Ref GeminiAPIKey
+          OPENAI_MODEL: !If [IsProduction, 'gpt-4', 'gpt-3.5-turbo']
+          GEMINI_MODEL: 'gemini-1.5-flash'
+          ENVIRONMENT: !Ref Environment
+          RESULTS_BUCKET: !Ref ContractUploadBucket
+      
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref ContractUploadBucket
+        - S3WritePolicy:
+            BucketName: !Ref ContractUploadBucket
+        - CloudWatchLogsFullAccess
+      
+      Tags:
+        Project: SmartContractRewriter
+        Component: S3Trigger
+        Environment: !Ref Environment
+  
+  # Allow S3 to invoke Lambda
+  S3InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Condition: CreateS3Bucket
+    Properties:
+      FunctionName: !Ref S3TriggerFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt ContractUploadBucket.Arn
+  
+  # ===================================================================
+  # CloudWatch Alarms - Monitoring and alerting
+  # ===================================================================
+  
+  LambdaErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-contract-analyzer-errors'
+      AlarmDescription: Alert when Lambda function has errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300                       # 5 minutes
+      EvaluationPeriods: 1
+      Threshold: 5                      # Alert if >5 errors in 5 minutes
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ContractAnalyzerFunction
+      TreatMissingData: notBreaching
+  
+  LambdaThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-contract-analyzer-throttles'
+      AlarmDescription: Alert when Lambda is being throttled
+      MetricName: Throttles
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref ContractAnalyzerFunction
+      TreatMissingData: notBreaching
+  
+  ApiGateway5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${Environment}-api-5xx-errors'
+      AlarmDescription: Alert when API returns 5xx errors
+      MetricName: 5XXError
+      Namespace: AWS/ApiGateway
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: ApiName
+          Value: !Ref ContractAnalyzerAPI
+      TreatMissingData: notBreaching
+
+# ===================================================================
+# Outputs - These are displayed after deployment
+# ===================================================================
+
+Outputs:
+  
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ContractAnalyzerAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub '${Environment}-ContractAnalyzerApiUrl'
+  
+  AnalyzeEndpoint:
+    Description: "Contract analysis endpoint"
+    Value: !Sub "https://${ContractAnalyzerAPI}.execute-api.${AWS::Region}.amazonaws.com/${Environment}/analyze"
+  
+  LambdaFunctionArn:
+    Description: "Contract Analyzer Lambda Function ARN"
+    Value: !GetAtt ContractAnalyzerFunction.Arn
+    Export:
+      Name: !Sub '${Environment}-ContractAnalyzerFunctionArn'
+  
+  LambdaFunctionName:
+    Description: "Lambda Function Name"
+    Value: !Ref ContractAnalyzerFunction
+  
+  S3BucketName:
+    Condition: CreateS3Bucket
+    Description: "S3 Bucket for contract uploads"
+    Value: !Ref ContractUploadBucket
+    Export:
+      Name: !Sub '${Environment}-ContractUploadBucket'
+  
+  ApiGatewayId:
+    Description: "API Gateway ID"
+    Value: !Ref ContractAnalyzerAPI
+  
+  Region:
+    Description: "AWS Region"
+    Value: !Ref AWS::Region
+  
+  AccountId:
+    Description: "AWS Account ID"
+    Value: !Ref AWS::AccountId
