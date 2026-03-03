@@ -54,15 +54,16 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: 🚀 Deploy to Heroku
-      uses: akhileshns/heroku-deploy@v3.13.15
-      with:
-        heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
-        heroku_app_name: ${{ secrets.HEROKU_APP_NAME }}
-        heroku_email: ${{ secrets.HEROKU_EMAIL }}
+    - name: 🚀 Deploy to Heroku via Git Push
+      env:
+        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
+      run: |
+        git remote add heroku https://heroku:${HEROKU_API_KEY}@git.heroku.com/${{ secrets.HEROKU_APP_NAME }}.git
+        git push heroku main --force
+        echo "✅ Pushed to Heroku"
 
     - name: 🔍 Post-Deploy Health Check
       run: |
-        sleep 15
+        sleep 20
         curl -f https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/health
         echo "✅ Heroku deployment is healthy"
