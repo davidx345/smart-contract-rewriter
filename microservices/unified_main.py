@@ -18,6 +18,7 @@ from typing import Optional, List
 import tempfile
 import hashlib
 import secrets
+from passlib.context import CryptContext
 
 # Create main application
 app = FastAPI(
@@ -37,15 +38,25 @@ app = FastAPI(
 # Built-in authentication (no external dependencies)
 
 # CORS configuration
+# Set ALLOWED_ORIGINS on Heroku as a comma-separated list of your frontend URLs.
+# e.g.: https://solivolt.live,https://www.solivolt.live,https://smart-contract-rewriter.vercel.app
+_default_origins = [
+    "https://smart-contract-rewriter.vercel.app",
+    "https://solivolt.live",
+    "https://www.solivolt.live",
+    "http://localhost:3000",
+    "http://localhost:5173",
+]
+_env_origins = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = (
+    [o.strip() for o in _env_origins.split(",") if o.strip()]
+    if _env_origins
+    else _default_origins
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://smart-contract-rewriter.vercel.app",
-        "https://solivolt.live",
-        "https://www.solivolt.live",
-        "http://localhost:3000",
-        "http://localhost:5173"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -57,6 +68,9 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 security = HTTPBearer()
+
+# Password hashing
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Auth Models
 class UserLogin(BaseModel):
@@ -87,22 +101,24 @@ class ContractGenerationRequest(BaseModel):
     features: Optional[List[str]] = None
     compiler_version: Optional[str] = None
 
-# Dummy user store (replace with real database in production)
+# Dummy user store (replace with a real database in production)
+# The hashed_password below is a valid bcrypt hash of "secret"
+# Login with: email=test@example.com  password=secret
 fake_users_db = {
     "test@example.com": {
         "email": "test@example.com",
         "full_name": "Test User",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"  # secret
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"  # bcrypt("secret")
     }
 }
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password (simplified for demo - use bcrypt in production)"""
-    return plain_password == "password" or hashed_password == "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    """Verify a plain-text password against its bcrypt hash."""
+    return pwd_context.verify(plain_password, hashed_password)
 
 def hash_password(password: str) -> str:
-    """Hash password (simplified for demo)"""
-    return "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    """Hash a plain-text password with bcrypt."""
+    return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -430,25 +446,8 @@ async def upload_contract(
 async def get_contract_history():
     """Get contract analysis history"""
     # Mock history data (replace with database query)
-    return {
-        "contracts": [
-            {
-                "id": 1,
-                "name": "MyToken.sol",
-                "analyzed_at": "2024-01-15T10:30:00Z",
-                "security_score": 92,
-                "status": "completed"
-            },
-            {
-                "id": 2,
-                "name": "DEX.sol", 
-                "analyzed_at": "2024-01-14T15:45:00Z",
-                "security_score": 78,
-                "status": "completed"
-            }
-        ],
-        "total": 2
-    }
+    # Returns a plain array so the frontend Array.isArray() check works correctly
+    return []
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
