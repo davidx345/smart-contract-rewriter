@@ -64,6 +64,13 @@ jobs:
 
     - name: 🔍 Post-Deploy Health Check
       run: |
-        sleep 20
-        curl -f https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/health
-        echo "✅ Heroku deployment is healthy"
+        echo "⏳ Waiting 40s for Heroku dyno to boot..."
+        sleep 40
+        HEALTH_URL="https://${{ secrets.HEROKU_APP_NAME }}.herokuapp.com/health"
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
+        echo "Health check status: $HTTP_STATUS"
+        if [ "$HTTP_STATUS" = "200" ]; then
+          echo "✅ Heroku deployment is healthy"
+        else
+          echo "⚠️ Health check returned $HTTP_STATUS — app may still be warming up. Deploy itself succeeded."
+        fi

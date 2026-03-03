@@ -12,7 +12,10 @@ class APIService {
   private api: AxiosInstance
 
   constructor() {    
-    const baseURL = import.meta.env.VITE_API_BASE_URL || 'https://api.solivolt.live';
+    const baseURL = import.meta.env.VITE_API_BASE_URL;
+    if (!baseURL) {
+      console.error('VITE_API_BASE_URL is not set! Set it in Vercel environment variables.');
+    }
     this.api = axios.create({
       baseURL: baseURL,
       headers: {
@@ -74,7 +77,7 @@ class APIService {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     // Adjust health check endpoint if it's not under /api/v1
-    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || 'https://api.solivolt.live';
+    const healthBaseURL = import.meta.env.VITE_API_BASE_URL || '';
     const healthApi = axios.create({ baseURL: healthBaseURL });
     const response = await healthApi.get('/health');
     return response.data;
