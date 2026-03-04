@@ -3,18 +3,22 @@ import { Link, NavLink } from 'react-router-dom';
 import { 
   ShieldCheck, 
   History, 
-  Linkedin, 
+  Linkedin,
+  Zap,
 } from 'lucide-react';
 
 const Navbar: React.FC = () => {
   return (
-    <nav className="bg-gray-900/80 backdrop-blur-md text-white shadow-lg sticky top-0 z-50">
+    <nav className="bg-gray-900/95 backdrop-blur-md text-white shadow-lg sticky top-0 z-50 border-b border-gray-800">
       <div className="container mx-auto px-6 py-3 flex justify-between items-center">
-        <Link to="/" className="flex items-center space-x-2">
-          <ShieldCheck className="h-8 w-8 text-primary-500" />
-          <h1 className="text-2xl font-bold tracking-tight">
-            SoliVolt
-          </h1>
+        <Link to="/" className="flex items-center space-x-2 group">
+          <div className="relative">
+            <ShieldCheck className="h-8 w-8 text-blue-400 group-hover:text-blue-300 transition-colors" />
+            <Zap className="h-3 w-3 text-yellow-400 absolute -bottom-0.5 -right-0.5" />
+          </div>
+          <span className="text-2xl font-bold tracking-tight">
+            Soli<span className="text-blue-400">Volt</span>
+          </span>
         </Link>
         
         <div className="flex items-center space-x-6">

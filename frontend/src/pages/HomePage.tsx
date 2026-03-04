@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import { Fuel, ShieldCheck, Code2, BookOpen, Wand2 } from 'lucide-react';
 import ContractFormComponent from '../components/contract/ContractForm';
 import ContractGenerator from '../components/contract/ContractGenerator';
 import GeneratedContractDisplay from '../components/contract/GeneratedContractDisplay';
@@ -219,26 +220,19 @@ const HomePage: React.FC<HomePageProps> = ({
             </h1><p className="text-xl md:text-2xl mb-8 text-blue-100">
               AI-powered analysis, optimization, and generation for your Solidity contracts
             </p>
-            <div className="flex flex-wrap justify-center gap-6 text-sm md:text-base">
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span>Gas Optimization</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                <span>Security Analysis</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                <span>Code Quality</span>
-              </div>              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                <span>Best Practices</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-indigo-400 rounded-full"></div>
-                <span>AI Generation</span>
-              </div>
+            <div className="flex flex-wrap justify-center gap-3 text-sm md:text-base">
+              {[
+                { label: 'Gas Optimization', color: 'bg-green-500' },
+                { label: 'Security Analysis', color: 'bg-blue-400' },
+                { label: 'Code Quality', color: 'bg-purple-400' },
+                { label: 'Best Practices', color: 'bg-yellow-400' },
+                { label: 'AI Generation', color: 'bg-indigo-400' },
+              ].map(({ label, color }) => (
+                <span key={label} className="flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                  <span className={`w-2 h-2 rounded-full ${color} flex-shrink-0`} />
+                  {label}
+                </span>
+              ))}
             </div>
           </motion.div>
         </div>
@@ -539,43 +533,48 @@ const HomePage: React.FC<HomePageProps> = ({
                 {
                   title: 'Gas Optimization',
                   description: 'Reduce transaction costs by optimizing gas usage',
-                  color: 'bg-yellow-100 text-yellow-600'
+                  color: 'bg-yellow-100 text-yellow-600',
+                  icon: Fuel,
                 },
                 {
                   title: 'Security Analysis',
                   description: 'Identify vulnerabilities and security issues in your code',
-                  color: 'bg-green-100 text-green-600'
+                  color: 'bg-green-100 text-green-600',
+                  icon: ShieldCheck,
                 },
                 {
                   title: 'Code Quality',
                   description: 'Improve readability, maintainability, and best practices',
-                  color: 'bg-blue-100 text-blue-600'
+                  color: 'bg-blue-100 text-blue-600',
+                  icon: Code2,
                 },
                 {
                   title: 'Best Practices',
                   description: 'Apply industry standards and proven patterns',
-                  color: 'bg-purple-100 text-purple-600'
+                  color: 'bg-purple-100 text-purple-600',
+                  icon: BookOpen,
                 },
                 {
                   title: 'AI Generation',
                   description: 'Generate smart contracts from natural language descriptions',
-                  color: 'bg-indigo-100 text-indigo-600'
+                  color: 'bg-indigo-100 text-indigo-600',
+                  icon: Wand2,
                 }
               ].map((feature, index) => (
                 <motion.div
-                  key={feature.title} // Ensure key is a string
+                  key={feature.title}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.1 * index }}
-                  className="text-center p-6 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                  transition={{ duration: 0.5, delay: 0.1 * index }}
+                  className="text-center p-6 bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200"
                 >
-                  <div className={`w-16 h-16 ${feature.color} rounded-full flex items-center justify-center text-3xl mx-auto mb-4`}>
-                    {feature.title.charAt(0)}
+                  <div className={`w-14 h-14 ${feature.color} rounded-xl flex items-center justify-center mx-auto mb-4`}>
+                    <feature.icon className="w-7 h-7" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-700 text-sm">
+                  <p className="text-gray-500 text-sm leading-relaxed">
                     {feature.description}
                   </p>
                 </motion.div>

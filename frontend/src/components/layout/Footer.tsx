@@ -48,7 +48,7 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="border-t border-gray-700 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">          <p className="text-sm text-gray-400">
-            © 2025 SoliVolt. All rights reserved.
+            © 2026 SoliVolt. All rights reserved.
           </p>
           <p className="text-sm text-gray-400 flex items-center mt-4 md:mt-0">
             Made with <Heart className="h-4 w-4 mx-1 text-red-500" /> for the blockchain community

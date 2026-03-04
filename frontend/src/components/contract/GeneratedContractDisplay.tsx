@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Download, Sparkles, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
+import { Copy, Download, Zap, CheckCircle, AlertTriangle, FileText } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
@@ -59,8 +59,8 @@ const GeneratedContractDisplay: React.FC<GeneratedContractDisplayProps> = ({
       <Card className="p-6 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-green-100 text-green-600 rounded-lg">
-              <Sparkles className="w-6 h-6" />
+            <div className="p-2 bg-blue-100 text-blue-600 rounded-lg">
+              <Zap className="w-6 h-6" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-gray-900">
